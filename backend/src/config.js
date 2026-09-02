@@ -41,7 +41,8 @@ export const config = {
   masterKey: process.env.MASTER_KEY || "",
   // network costs kept inside the fresh wallet: pons launch fee (0.0005 ETH),
   // tx gas, and a permanent gas reserve for future sweep/claim/forward txs
-  launchGasEth: Number(process.env.LAUNCH_GAS_ETH || 0.003),
+  launchGasEth: Number(process.env.LAUNCH_GAS_ETH || 0.003), // floor for the gas budget
+  launchGasUnits: BigInt(process.env.LAUNCH_GAS_UNITS || 6_000_000), // real launch ≈ 3.74M
   gasReserveEth: Number(process.env.GAS_RESERVE_ETH || 0.0015),
   depositTimeoutMin: Number(process.env.DEPOSIT_TIMEOUT_MIN || 30),
   // fee keeper: sweeps curves + claims escrow + forwards to campaign vaults

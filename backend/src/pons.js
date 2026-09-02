@@ -75,6 +75,14 @@ export async function launchCoin({ account, name, symbol, logo, description, web
   };
 
   const wallet = walletClientFor(account);
+  // Explicit gas caps: the node's estimate uses maxFeePerGas = 2×base and can
+  // overshoot the wallet's balance check; the real launch burns ~3.74M gas.
+  const gasPrice = await client.getGasPrice();
+  const gasOpts = {
+    gas: config.launchGasUnits,
+    maxFeePerGas: gasPrice * 2n,
+    maxPriorityFeePerGas: 0n,
+  };
   let hash;
   if (devBuyWei > 0n) {
     hash = await wallet.writeContract({
@@ -83,6 +91,7 @@ export async function launchCoin({ account, name, symbol, logo, description, web
       functionName: "launchAndBuy",
       args: [params, configId, pairToken, devBuyWei, 0n, devBuyRecipient || account.address, []],
       value: launchFee + devBuyWei,
+      ...gasOpts,
     });
   } else {
     hash = await wallet.writeContract({
@@ -91,6 +100,7 @@ export async function launchCoin({ account, name, symbol, logo, description, web
       functionName: "launchToken",
       args: [params, configId, pairToken],
       value: launchFee,
+      ...gasOpts,
     });
   }
 

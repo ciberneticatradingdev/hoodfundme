@@ -11,6 +11,7 @@ import { launchCoin } from "./pons.js";
 /// construction. Failed launches refund the user automatically.
 
 let running = false;
+let ticks = 0;
 
 export function startLauncher() {
   setInterval(tick, 5_000);
@@ -22,6 +23,7 @@ async function tick() {
   running = true;
   try {
     await expireStale();
+    if (ticks++ % 12 === 0) await retryRefunds(); // once a minute
     const rows = await sql`select * from launches where status = 'awaiting_deposit' order by created_at asc limit 20`;
     for (const row of rows) {
       const balance = await getEthBalance(row.creator_wallet).catch(() => 0);
@@ -48,17 +50,34 @@ async function expireStale() {
 }
 
 /// A failed launch never keeps the user's ETH: empty the custodial wallet
-/// back to the user, minus the gas for the refund transfer itself.
+/// back to the user. Explicit gas params so the node's balance check is
+/// satisfied exactly (refund = balance - gasLimit×maxFee, no estimation).
 async function refundDeposit(row) {
   const account = accountFromSecret(decryptSecret(row.creator_secret_enc));
   const balance = await getEthBalanceWei(account.address);
   const gasPrice = await client.getGasPrice();
-  const fee = 21_000n * gasPrice * 2n; // headroom for base-fee drift
-  const refund = balance - fee;
+  const gasLimit = 40_000n; // EOA transfer + Orbit L1-fee margin
+  const maxFeePerGas = gasPrice * 2n;
+  const refund = balance - gasLimit * maxFeePerGas;
   if (refund <= 0n) return;
-  const hash = await sendEth({ account, to: row.user_wallet, valueWei: refund });
+  const hash = await sendEth({ account, to: row.user_wallet, valueWei: refund, gas: gasLimit, maxFeePerGas });
   await sql`update launches set status = 'refunded', refund_tx = ${hash} where launch_id = ${row.launch_id}`;
   console.log(`[launcher] refunded ${toEth(refund).toFixed(6)} ETH → ${row.user_wallet} (${hash})`);
+}
+
+/// Failed/expired launches whose wallet still holds ETH get their refund
+/// retried every cycle — a refund that once failed is never abandoned.
+async function retryRefunds() {
+  const rows = await sql`select * from launches
+    where status in ('failed', 'expired') and refund_tx is null
+    order by created_at asc limit 10`;
+  for (const row of rows) {
+    const balance = await getEthBalanceWei(row.creator_wallet).catch(() => 0n);
+    if (balance < 10n ** 13n) continue; // dust
+    await refundDeposit(row).catch((e) =>
+      console.error(`[launcher] refund retry ${row.launch_id} failed:`, e.message)
+    );
+  }
 }
 
 async function launch(row) {

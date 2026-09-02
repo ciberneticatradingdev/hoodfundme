@@ -11,6 +11,7 @@ import {
   createLaunch,
   fetchCharities,
   fetchGofundmePreview,
+  fetchLaunchEstimate,
   uploadLogo,
   type Charity,
 } from "@/lib/api";
@@ -255,9 +256,13 @@ export default function LaunchPage() {
     depositExpectedEth: number;
     timeoutMin: number;
   } | null>(null);
-  const [copied, setCopied] = useState(false);
 
   const { data: charities } = useQuery({ queryKey: ["charities"], queryFn: fetchCharities });
+  const { data: estimate } = useQuery({
+    queryKey: ["estimate", Number(devBuy) || 0],
+    queryFn: () => fetchLaunchEstimate(Number(devBuy) || 0),
+    refetchInterval: 60000,
+  });
 
   const validGofundme = /^https:\/\/(www\.)?gofundme\.com\/f\/[A-Za-z0-9-]+/.test(gofundmeUrl.trim());
 
@@ -290,6 +295,7 @@ export default function LaunchPage() {
     enabled: !!ticket,
     refetchInterval: 4000,
   });
+  const launchStatus = status?.status ?? "awaiting_deposit";
 
   const {
     sendTransaction,
@@ -299,6 +305,8 @@ export default function LaunchPage() {
   } = useSendTransaction();
   const { isSuccess: depositConfirmed } = useWaitForTransactionReceipt({ hash: depositTxHash });
 
+  /// One click: create the launch ticket, then immediately ask the wallet to
+  /// sign the funding transaction. Everything after is status on this page.
   const submit = async () => {
     if (!address) return;
     setSubmitting(true);
@@ -315,6 +323,10 @@ export default function LaunchPage() {
         userWallet: address,
       });
       setTicket(t);
+      sendTransaction({
+        to: t.depositAddress as `0x${string}`,
+        value: parseEther(String(t.depositExpectedEth)),
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed");
     } finally {
@@ -322,151 +334,10 @@ export default function LaunchPage() {
     }
   };
 
-  const copyAddr = async () => {
-    if (!ticket) return;
-    await navigator.clipboard.writeText(ticket.depositAddress);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+  const reset = () => {
+    setTicket(null);
+    setError("");
   };
-
-  /* ------------------------------------------------------- ticket views */
-  if (ticket) {
-    const st = status?.status ?? "awaiting_deposit";
-    return (
-      <div className="hero-glow">
-        <div className="mx-auto max-w-xl px-4 py-16">
-          <Reveal>
-            <p className="eyebrow">
-              {st === "awaiting_deposit" && "Step 2 of 2 — fund the launch"}
-              {st === "launching" && "Launching on pons…"}
-              {st === "live" && "Live!"}
-              {(st === "failed" || st === "expired" || st === "refunded") && "Launch failed"}
-            </p>
-            <h1 className="display mt-3 text-4xl text-ink">
-              {status?.name ?? name} <span className="text-updeep">${status?.symbol ?? symbol.toUpperCase()}</span>
-            </h1>
-          </Reveal>
-
-          {st === "awaiting_deposit" && (
-            <Reveal delay={1}>
-              <div className="card-pop mt-8 p-8">
-                {!depositTxHash ? (
-                  <>
-                    <p className="text-sm leading-relaxed text-mut">
-                      One transaction from your wallet funds the launch
-                      {Number(devBuy) > 0 && (
-                        <> — including your <span className="mono font-semibold text-ink">{devBuy} ETH</span> dev buy</>
-                      )}
-                      . We detect it and launch automatically; any leftover is donated to the cause.
-                    </p>
-                    <button
-                      onClick={() =>
-                        sendTransaction({
-                          to: ticket.depositAddress as `0x${string}`,
-                          value: parseEther(String(ticket.depositExpectedEth)),
-                        })
-                      }
-                      disabled={depositSending}
-                      className="btn-green mt-5 w-full py-4 text-sm disabled:opacity-50"
-                    >
-                      {depositSending ? "Confirm in your wallet…" : `Launch — send ${ticket.depositExpectedEth} ETH`}
-                    </button>
-                    {depositError && (
-                      <p className="mt-3 text-xs text-down">{depositError.message.split("\n")[0]}</p>
-                    )}
-                    <details className="mt-4">
-                      <summary className="microlabel cursor-pointer">or send manually</summary>
-                      <button
-                        onClick={copyAddr}
-                        className="mono mt-2 block w-full break-all rounded-2xl border border-line bg-bg px-4 py-3 text-left text-xs text-mut transition hover:border-up"
-                      >
-                        {ticket.depositAddress} {copied ? "✓" : "⧉"}
-                      </button>
-                      <p className="mt-1.5 text-[11px] text-mut">
-                        Send exactly {ticket.depositExpectedEth} ETH on Robinhood Chain.
-                      </p>
-                    </details>
-                  </>
-                ) : (
-                  <p className="text-sm leading-relaxed text-mut">
-                    Deposit sent{depositConfirmed ? " and confirmed" : ""} —{" "}
-                    <a
-                      href={`${EXPLORER}/tx/${depositTxHash}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mono text-updeep hover:underline"
-                    >
-                      {shortAddr(depositTxHash)} ↗
-                    </a>
-                    . Launching your coin any second now…
-                  </p>
-                )}
-                <div className="mt-4 flex items-center gap-2">
-                  <span className="live-dot h-2 w-2 rounded-full bg-up" />
-                  <span className="microlabel">watching for your deposit · expires in {ticket.timeoutMin} min</span>
-                </div>
-              </div>
-            </Reveal>
-          )}
-
-          {st === "launching" && (
-            <div className="card-pop mt-8 p-8 text-center">
-              <div className="skeleton mx-auto h-3 w-48 rounded-full" />
-              <p className="mt-4 text-sm text-mut">Deposit received — launching your coin on the pons factory…</p>
-            </div>
-          )}
-
-          {st === "live" && status && (
-            <div className="card-pop mt-8 p-8">
-              <p className="text-sm text-mut">
-                <span className="font-semibold text-updeep">${status.symbol}</span> is live on Robinhood Chain.
-                Every creator fee it earns now flows to{" "}
-                <Link href={`/campaign/${status.campaign_id}`} className="font-semibold text-updeep hover:underline">
-                  {status.campaign_name}
-                </Link>{" "}
-                automatically.
-              </p>
-              <div className="mono mt-5 space-y-2 text-xs">
-                <p>token <a className="text-updeep hover:underline" href={`${EXPLORER}/address/${status.mint}`} target="_blank" rel="noreferrer">{status.mint} ↗</a></p>
-                {status.launch_tx && (
-                  <p>launch tx <a className="text-mut hover:text-updeep" href={`${EXPLORER}/tx/${status.launch_tx}`} target="_blank" rel="noreferrer">{shortAddr(status.launch_tx)} ↗</a></p>
-                )}
-              </div>
-              <div className="mt-6 flex gap-3">
-                <a href={`https://ponsfamily.com/token/${status.mint}`} target="_blank" rel="noreferrer" className="btn-green px-6 py-3 text-sm">
-                  Trade on pons ↗
-                </a>
-                <Link href={`/campaign/${status.campaign_id}`} className="btn-ghost px-6 py-3 text-sm">
-                  View campaign
-                </Link>
-              </div>
-            </div>
-          )}
-
-          {(st === "failed" || st === "expired" || st === "refunded") && (
-            <div className="card-pop mt-8 p-8">
-              <p className="text-sm text-down">
-                {st === "expired"
-                  ? "The deposit window expired — nothing was received."
-                  : `The launch failed${status?.error ? `: ${status.error}` : "."}`}
-              </p>
-              {status?.refund_tx && (
-                <p className="mono mt-3 text-xs text-mut">
-                  Deposit refunded:{" "}
-                  <a className="text-updeep hover:underline" href={`${EXPLORER}/tx/${status.refund_tx}`} target="_blank" rel="noreferrer">
-                    {shortAddr(status.refund_tx)} ↗
-                  </a>
-                </p>
-              )}
-              <button onClick={() => setTicket(null)} className="btn-pop mt-6 px-6 py-3 text-sm">
-                Try again
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
 
   /* --------------------------------------------------------- form view */
   return (
@@ -608,19 +479,106 @@ export default function LaunchPage() {
               )}
             </div>
 
-            {isConnected && address ? (
-              <button onClick={submit} disabled={!canSubmit} className="btn-green w-full py-4 text-sm disabled:opacity-40">
-                {submitting ? "Creating launch wallet…" : "Get launch address"}
-              </button>
+            {/* ---------------------------------------- launch + inline status */}
+            {!ticket ? (
+              <>
+                {isConnected && address ? (
+                  <button onClick={submit} disabled={!canSubmit} className="btn-green w-full py-4 text-sm disabled:opacity-40">
+                    {submitting
+                      ? "Preparing launch…"
+                      : `Launch${estimate ? ` — ${estimate.depositEth} ETH` : ""} 🚀`}
+                  </button>
+                ) : (
+                  <button onClick={openWalletModal} className="btn-green w-full py-4 text-sm">
+                    Connect wallet
+                  </button>
+                )}
+                {error && <p className="text-xs text-down">{error}</p>}
+                <p className="text-center text-xs text-mut">
+                  {estimate
+                    ? `pons fee ${estimate.launchFeeEth} + gas ${estimate.gasBudgetEth}${Number(devBuy) > 0 ? ` + dev buy ${devBuy}` : ""} ETH — unused gas is donated to the cause. No platform fee, 0% forever.`
+                    : "Cost: pons launch fee + gas. No platform fee — 0% forever."}
+                </p>
+              </>
+            ) : launchStatus === "live" && status ? (
+              <div className="rounded-2xl border border-up/50 bg-updim/50 p-6 text-center">
+                <p className="display text-xl text-ink">
+                  ${status.symbol} is <span className="text-updeep">LIVE</span> 🎉
+                </p>
+                <p className="mt-2 text-xs text-mut">
+                  Creator fees now flow to {status.campaign_name} automatically.
+                </p>
+                <div className="mt-4 flex justify-center gap-2">
+                  <a href={`https://ponsfamily.com/token/${status.mint}`} target="_blank" rel="noreferrer" className="btn-green px-5 py-2.5 text-xs">
+                    Trade on pons ↗
+                  </a>
+                  <Link href={`/t/${ticket.launchId}`} className="btn-pop px-5 py-2.5 text-xs">
+                    Token page
+                  </Link>
+                </div>
+              </div>
+            ) : launchStatus === "failed" || launchStatus === "expired" || launchStatus === "refunded" ? (
+              <div className="rounded-2xl border border-down/40 bg-card2/60 p-5">
+                <p className="text-sm text-down">
+                  The launch failed{status?.error ? `: ${status.error.split("\n")[0]}` : "."} Your deposit is
+                  refunded to your wallet automatically
+                  {status?.refund_tx && (
+                    <>
+                      {" — "}
+                      <a href={`${EXPLORER}/tx/${status.refund_tx}`} target="_blank" rel="noreferrer" className="mono text-updeep underline">
+                        {shortAddr(status.refund_tx)} ↗
+                      </a>
+                    </>
+                  )}
+                  .
+                </p>
+                <button onClick={reset} className="btn-pop mt-4 px-5 py-2.5 text-xs">
+                  Try again
+                </button>
+              </div>
             ) : (
-              <button onClick={openWalletModal} className="btn-green w-full py-4 text-sm">
-                Connect wallet
-              </button>
+              <div className="rounded-2xl border border-up/40 bg-updim/40 p-5">
+                <div className="flex items-center gap-2.5">
+                  <span className="live-dot h-2.5 w-2.5 rounded-full bg-up" />
+                  <p className="text-sm font-semibold text-ink">
+                    {depositSending && "Confirm the transaction in your wallet…"}
+                    {!depositSending && !depositTxHash && "Waiting for your wallet…"}
+                    {depositTxHash && launchStatus === "awaiting_deposit" && "Deposit sent — detecting it on-chain…"}
+                    {launchStatus === "launching" && "Launching your coin on pons…"}
+                  </p>
+                </div>
+                {depositTxHash && (
+                  <p className="mono mt-2 text-xs text-mut">
+                    tx{" "}
+                    <a href={`${EXPLORER}/tx/${depositTxHash}`} target="_blank" rel="noreferrer" className="text-updeep hover:underline">
+                      {shortAddr(depositTxHash)} ↗
+                    </a>
+                    {depositConfirmed ? " · confirmed" : ""}
+                  </p>
+                )}
+                {depositError && (
+                  <div className="mt-3">
+                    <p className="text-xs text-down">{depositError.message.split("\n")[0]}</p>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        onClick={() =>
+                          sendTransaction({
+                            to: ticket.depositAddress as `0x${string}`,
+                            value: parseEther(String(ticket.depositExpectedEth)),
+                          })
+                        }
+                        className="btn-green px-4 py-2 text-xs"
+                      >
+                        Retry
+                      </button>
+                      <button onClick={reset} className="btn-ghost px-4 py-2 text-xs">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
-            {error && <p className="text-xs text-down">{error}</p>}
-            <p className="text-center text-xs text-mut">
-              Cost: pons launch fee (0.0005 ETH) + gas. No platform fee — 0% forever.
-            </p>
           </div>
         </Reveal>
       </div>

@@ -6,7 +6,7 @@ import { sql, logEvent } from "./db.js";
 import { config } from "./config.js";
 import { getEthPrice } from "./ethprice.js";
 import { encryptSecret } from "./crypto.js";
-import { newWallet, toEth } from "./evm.js";
+import { newWallet, toEth, client } from "./evm.js";
 import { fetchLaunchFeeWei } from "./pons.js";
 import { createCampaignOnChain } from "./fund.js";
 import { listCharities, resolveCharity } from "./charities.js";
@@ -92,6 +92,33 @@ export function createApi() {
   });
 
   // ------------------------------------------------- charity launchpad
+
+  /// Deposit = pons launch fee + dynamic gas budget (2.5× worst case at the
+  /// current gas price, floored at LAUNCH_GAS_ETH) + dev buy. Leftover gas
+  /// budget is donated to the cause after launch.
+  async function estimateDeposit(devBuy) {
+    const [launchFeeEth, gasPrice] = await Promise.all([
+      fetchLaunchFeeWei().then(toEth).catch(() => 0.0005),
+      client.getGasPrice().catch(() => 10n ** 9n),
+    ]);
+    const gasBudget = Math.max(
+      config.launchGasEth,
+      toEth(config.launchGasUnits * gasPrice * 25n / 10n)
+    );
+    const depositEth = Number((launchFeeEth + gasBudget + devBuy).toFixed(5));
+    return { depositEth, launchFeeEth, gasBudgetEth: Number(gasBudget.toFixed(5)) };
+  }
+
+  app.get("/api/launches/estimate", async (req, res) => {
+    try {
+      const devBuy = Number(req.query.devBuy) || 0;
+      if (devBuy < 0 || devBuy > 10 || !isFinite(devBuy))
+        return res.status(400).json({ error: "devBuy: 0 to 10 ETH" });
+      res.json(await estimateDeposit(devBuy));
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
 
   app.get("/api/charities", async (_req, res) => {
     try {
@@ -308,8 +335,7 @@ export function createApi() {
         campaign = { id: created.id, name: cause.name };
       }
 
-      const launchFeeEth = await fetchLaunchFeeWei().then(toEth).catch(() => 0.0005);
-      const depositExpected = Number((launchFeeEth + config.launchGasEth + devBuy).toFixed(6));
+      const { depositEth: depositExpected } = await estimateDeposit(devBuy);
 
       const wallet = newWallet();
       const launchId = crypto.randomBytes(10).toString("hex");

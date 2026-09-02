@@ -113,6 +113,10 @@ export const fetchCampaign = (id: number) =>
   );
 export const fetchLaunches = () => get<Launch[]>("/api/launches");
 export const fetchCharities = () => get<Charity[]>("/api/charities");
+export const fetchLaunchEstimate = (devBuy: number) =>
+  get<{ depositEth: number; launchFeeEth: number; gasBudgetEth: number }>(
+    `/api/launches/estimate?devBuy=${devBuy}`
+  );
 export const fetchGofundmePreview = (url: string) =>
   get<GofundmePreview>(`/api/gofundme/preview?url=${encodeURIComponent(url)}`);
 

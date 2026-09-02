@@ -46,9 +46,15 @@ export async function getEthBalanceWei(address) {
 }
 
 /// Plain ETH transfer; returns the tx hash after 1 confirmation.
-export async function sendEth({ account, to, valueWei }) {
+/// Pass gas/maxFeePerGas to skip estimation (e.g. wallet-emptying refunds).
+export async function sendEth({ account, to, valueWei, gas, maxFeePerGas }) {
   const wallet = walletClientFor(account);
-  const hash = await wallet.sendTransaction({ to, value: valueWei });
+  const hash = await wallet.sendTransaction({
+    to,
+    value: valueWei,
+    ...(gas ? { gas } : {}),
+    ...(maxFeePerGas ? { maxFeePerGas, maxPriorityFeePerGas: 0n } : {}),
+  });
   await client.waitForTransactionReceipt({ hash });
   return hash;
 }
