@@ -2,20 +2,55 @@ import { EXPLORER, FUND_ADDRESS } from "@/lib/chain";
 
 export function Footer() {
   return (
-    <footer className="border-t border-line py-8 text-center text-xs text-mut">
-      <p>
-        HoodFundMe — trustless giving on Robinhood Chain. 0% commission, enforced by code.
-      </p>
-      <p className="mt-2 mono">
-        <a
-          href={`${EXPLORER}/address/${FUND_ADDRESS}`}
-          target="_blank"
-          rel="noreferrer"
-          className="hover:text-up"
-        >
-          HoodFund contract ↗
-        </a>
-      </p>
+    <footer className="hairline">
+      <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-12 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="display flex items-center gap-2 text-lg text-ink">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-forest text-xs text-up">▲</span>
+            HoodFundMe
+          </div>
+          <p className="mt-3 max-w-xs text-xs leading-relaxed text-mut">
+            Trustless giving on Robinhood Chain. Every campaign is a vault, every
+            payout is a public transaction, and the 0% commission is enforced by
+            code — not a promise.
+          </p>
+        </div>
+        <div className="flex gap-14">
+          <div>
+            <div className="microlabel mb-3">App</div>
+            <ul className="space-y-2 text-xs font-medium text-mut">
+              <li><a href="/campaigns" className="transition hover:text-ink">Campaigns</a></li>
+              <li><a href="/create" className="transition hover:text-ink">Create campaign</a></li>
+              <li><a href="/terminal" className="transition hover:text-ink">Live terminal</a></li>
+            </ul>
+          </div>
+          <div>
+            <div className="microlabel mb-3">Protocol</div>
+            <ul className="space-y-2 text-xs font-medium text-mut">
+              <li>
+                <a
+                  href={`${EXPLORER}/address/${FUND_ADDRESS}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="transition hover:text-ink"
+                >
+                  HoodFund contract ↗
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://github.com/ciberneticatradingdev/hoodfundme"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="transition hover:text-ink"
+                >
+                  Source code ↗
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </footer>
   );
 }

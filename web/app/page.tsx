@@ -2,166 +2,237 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { fetchStats, fetchDonations } from "@/lib/api";
+import { fetchStats, fetchDonations, fetchEvents } from "@/lib/api";
 import { fmtEth, fmtUsd, shortAddr, timeAgo } from "@/lib/format";
 import { EXPLORER } from "@/lib/chain";
+import { Reveal, CountUp } from "@/components/motion";
 
 export default function Landing() {
   const { data: stats } = useQuery({ queryKey: ["stats"], queryFn: fetchStats, refetchInterval: 10000 });
   const { data: donations } = useQuery({ queryKey: ["donations"], queryFn: fetchDonations, refetchInterval: 15000 });
+  const { data: events } = useQuery({ queryKey: ["events"], queryFn: () => fetchEvents(), refetchInterval: 8000 });
+
+  const ticker = (events ?? []).slice(0, 12);
 
   return (
-    <div className="mx-auto max-w-6xl px-4">
-      {/* Hero */}
-      <section className="py-20 text-center">
-        <p className="mono mb-4 text-xs uppercase tracking-widest text-up">
-          ▲ Robinhood Chain · chain id 4663
-        </p>
-        <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-6xl">
-          Fees in. <span className="text-up">Giving out.</span>
-          <br />
-          100% on-chain.
-        </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-mut">
-          Every campaign gets its own vault address on Robinhood Chain. Point any fee
-          stream at it — token creator fees, trading revenue, tips — and the smart
-          contract forwards <span className="text-ink">100% to the cause, automatically</span>.
-          No cards, no middlemen, no trust required.
-        </p>
-        <div className="mt-8 flex justify-center gap-3">
-          <Link
-            href="/create"
-            className="rounded-md bg-up px-6 py-3 font-semibold text-bg hover:opacity-90"
-          >
-            Create Campaign
-          </Link>
-          <Link
-            href="/terminal"
-            className="rounded-md border border-line px-6 py-3 font-semibold text-ink hover:border-up"
-          >
-            Live Terminal
-          </Link>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          { label: "ETH DONATED", value: fmtEth(stats?.totalRaisedEth ?? 0) },
-          { label: "USD VALUE", value: fmtUsd(stats?.donatedUsd ?? 0) },
-          { label: "PENDING IN VAULTS", value: `${fmtEth(stats?.totalPendingEth ?? 0)} ETH` },
-          { label: "ACTIVE CAMPAIGNS", value: String(stats?.activeCampaigns ?? 0) },
-        ].map((s) => (
-          <div key={s.label} className="rounded-lg border border-line bg-card p-5 text-center">
-            <div className="mono text-2xl font-bold text-up">{s.value}</div>
-            <div className="mt-1 text-[10px] uppercase tracking-widest text-mut">{s.label}</div>
+    <div>
+      {/* ------------------------------------------------ hero */}
+      <section className="hero-glow relative overflow-hidden">
+        {/* floating vault chips */}
+        <div className="pointer-events-none absolute inset-0 hidden lg:block" aria-hidden>
+          <div className="floaty absolute left-[8%] top-[30%] rounded-2xl border border-line bg-card px-4 py-3 shadow-sm" style={{ ["--r" as string]: "-4deg" }}>
+            <div className="microlabel">vault 0x3f…a21c</div>
+            <div className="mono mt-1 text-sm font-bold text-updeep">+0.42 ETH</div>
           </div>
-        ))}
-      </section>
-
-      {/* How it works */}
-      <section className="py-20">
-        <p className="mono text-center text-xs uppercase tracking-widest text-up">How it works</p>
-        <h2 className="mt-2 text-center text-3xl font-bold">Three steps. Zero trust needed.</h2>
-        <div className="mt-10 grid gap-4 sm:grid-cols-3">
-          {[
-            {
-              step: "01",
-              title: "Create a campaign",
-              body: "Name your cause and set the beneficiary address. The contract deploys a dedicated vault address for your campaign — on-chain, in one transaction.",
-            },
-            {
-              step: "02",
-              title: "Point fees at the vault",
-              body: "Launch a token, run a bot, route trading fees — anything that earns ETH on Robinhood Chain. Set your vault as the fee receiver and forget about it.",
-            },
-            {
-              step: "03",
-              title: "Automatic payouts",
-              body: "The contract forwards everything to the beneficiary. Anyone can trigger it, our keeper does it for you. Every payout is a public transaction.",
-            },
-          ].map((c) => (
-            <div key={c.step} className="rounded-lg border border-line bg-card p-6">
-              <div className="mono text-xs text-up">STEP {c.step}</div>
-              <h3 className="mt-2 font-bold">{c.title}</h3>
-              <p className="mt-2 text-sm text-mut">{c.body}</p>
-            </div>
-          ))}
+          <div className="floaty absolute right-[7%] top-[24%] rounded-2xl border border-line bg-card px-4 py-3 shadow-sm" style={{ ["--r" as string]: "3deg", animationDelay: "1.2s" }}>
+            <div className="microlabel">payout → cause</div>
+            <div className="mono mt-1 text-sm font-bold text-updeep">100%</div>
+          </div>
+          <div className="floaty absolute bottom-[18%] right-[16%] rounded-2xl border border-line bg-card px-4 py-3 shadow-sm" style={{ ["--r" as string]: "-2deg", animationDelay: "2.1s" }}>
+            <div className="microlabel">commission</div>
+            <div className="mono mt-1 text-sm font-bold text-ink">0.00%</div>
+          </div>
         </div>
-      </section>
 
-      {/* Why */}
-      <section className="pb-20">
-        <div className="grid gap-4 sm:grid-cols-3">
-          {[
-            {
-              title: "Trustless by design",
-              body: "We never hold funds. Vaults can only pay the beneficiary — it's enforced by the contract, not a promise.",
-            },
-            {
-              title: "0% commission, in code",
-              body: "There is no fee parameter in the contract. Read the source: 100% of every wei reaches the cause.",
-            },
-            {
-              title: "Fully automated",
-              body: "No human pays anyone. A keeper flushes vaults on a schedule, and anyone else can too if we ever stop.",
-            },
-          ].map((c) => (
-            <div key={c.title} className="rounded-lg border border-line bg-card2 p-6">
-              <h3 className="font-bold text-up">{c.title}</h3>
-              <p className="mt-2 text-sm text-mut">{c.body}</p>
-            </div>
-          ))}
+        <div className="mx-auto max-w-6xl px-4 pb-16 pt-24 text-center sm:pt-32">
+          <p className="eyebrow rise rise-1">▲ Robinhood Chain · trustless giving</p>
+          <h1 className="display rise rise-2 mx-auto mt-5 max-w-4xl text-5xl text-ink sm:text-7xl">
+            Fees in.
+            <br />
+            <span className="green-text">Giving out.</span>
+          </h1>
+          <p className="rise rise-3 mx-auto mt-6 max-w-xl text-base leading-relaxed text-mut sm:text-lg">
+            Every campaign gets its own vault on Robinhood Chain. Point any fee
+            stream at it and the contract forwards{" "}
+            <span className="font-semibold text-ink">100% to the cause, automatically</span>.
+            No cards. No middlemen. No trust required.
+          </p>
+          <div className="rise rise-4 mt-9 flex justify-center gap-3">
+            <Link href="/create" className="btn-green px-7 py-3.5 text-sm">
+              Create campaign
+            </Link>
+            <Link href="/campaigns" className="btn-ghost px-7 py-3.5 text-sm">
+              Explore causes
+            </Link>
+          </div>
         </div>
-      </section>
 
-      {/* Recent payouts */}
-      <section className="pb-20">
-        <h2 className="mb-4 text-xl font-bold">Recent payouts</h2>
-        <div className="overflow-x-auto rounded-lg border border-line bg-card">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs uppercase text-mut">
-                <th className="p-3">Campaign</th>
-                <th className="p-3">Amount</th>
-                <th className="p-3">Beneficiary</th>
-                <th className="p-3">Tx</th>
-                <th className="p-3">When</th>
-              </tr>
-            </thead>
-            <tbody className="mono">
-              {(donations ?? []).slice(0, 8).map((d) => (
-                <tr key={d.id} className="border-b border-line/50">
-                  <td className="p-3">
-                    <Link href={`/campaign/${d.campaign_id}`} className="text-up hover:underline">
-                      {d.campaign_name ?? `#${d.campaign_id}`}
-                    </Link>
-                  </td>
-                  <td className="p-3">{fmtEth(d.amount)} ETH</td>
-                  <td className="p-3 text-mut">{shortAddr(d.beneficiary)}</td>
-                  <td className="p-3">
-                    <a
-                      href={`${EXPLORER}/tx/${d.tx_hash}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-mut hover:text-up"
-                    >
-                      {shortAddr(d.tx_hash)} ↗
-                    </a>
-                  </td>
-                  <td className="p-3 text-mut">{timeAgo(d.ts)}</td>
-                </tr>
+        {/* live ticker */}
+        {ticker.length > 0 && (
+          <div className="full-bleed border-y border-line bg-card/70">
+            <div className="marquee py-2.5">
+              {[0, 1].map((k) => (
+                <div key={k} aria-hidden={k === 1}>
+                  {ticker.map((e) => (
+                    <span key={`${k}-${e.id}`} className="mono mx-6 inline-flex items-center gap-2 text-xs text-mut">
+                      <span className={`h-1.5 w-1.5 rounded-full ${e.type === "donated" ? "bg-up" : e.type === "campaign_created" ? "bg-gold" : "bg-line"}`} />
+                      <span className="uppercase text-updeep">{e.type.replace(/_/g, " ")}</span>
+                      {e.campaign_name && <span className="text-ink">{e.campaign_name}</span>}
+                      <span>{e.message.length > 60 ? e.message.slice(0, 60) + "…" : e.message}</span>
+                      <span className="text-line">·</span>
+                      <span>{timeAgo(e.ts)}</span>
+                    </span>
+                  ))}
+                </div>
               ))}
-              {(donations ?? []).length === 0 && (
-                <tr>
-                  <td colSpan={5} className="p-6 text-center text-mut">
-                    No payouts yet — be the first cause.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ------------------------------------------------ stats */}
+      <section className="mx-auto max-w-6xl px-4 py-14">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { label: "ETH donated", value: stats?.totalRaisedEth ?? 0, fmt: (n: number) => fmtEth(n) },
+            { label: "USD value", value: stats?.donatedUsd ?? 0, fmt: (n: number) => fmtUsd(n) },
+            { label: "Pending in vaults", value: stats?.totalPendingEth ?? 0, fmt: (n: number) => `${fmtEth(n)} ETH` },
+            { label: "Active campaigns", value: stats?.activeCampaigns ?? 0, fmt: (n: number) => String(Math.round(n)) },
+          ].map((s, i) => (
+            <Reveal key={s.label} delay={(i % 4) as 0 | 1 | 2 | 3}>
+              <div className="card-pop p-6 text-center">
+                <div className="display mono text-3xl text-updeep">
+                  <CountUp value={s.value} format={s.fmt} />
+                </div>
+                <div className="microlabel mt-2">{s.label}</div>
+              </div>
+            </Reveal>
+          ))}
         </div>
+      </section>
+
+      {/* ------------------------------------------------ how it works */}
+      <section className="mx-auto max-w-6xl px-4 py-14">
+        <Reveal>
+          <p className="eyebrow">How it works</p>
+          <h2 className="display mt-3 max-w-2xl text-3xl text-ink sm:text-5xl">
+            Three steps.
+            <br />
+            Zero trust needed.
+          </h2>
+        </Reveal>
+        <div className="mt-12 grid gap-4 sm:grid-cols-3">
+          {[
+            {
+              n: "01",
+              title: "Create a campaign",
+              body: "Name your cause, set the beneficiary address. One transaction deploys a dedicated vault for your campaign — on-chain, forever.",
+            },
+            {
+              n: "02",
+              title: "Point fees at the vault",
+              body: "Token creator fees, bot revenue, trading fees, tips — anything that earns ETH on Robinhood Chain. Set the vault as receiver and forget it.",
+            },
+            {
+              n: "03",
+              title: "Automatic payouts",
+              body: "The contract forwards everything to the beneficiary. Our keeper triggers it on a timer — and if we ever stop, anyone can. It's permissionless.",
+            },
+          ].map((c, i) => (
+            <Reveal key={c.n} delay={(i + 1) as 1 | 2 | 3}>
+              <div className="card-pop h-full p-8">
+                <div className="display text-4xl text-line">{c.n}</div>
+                <h3 className="display mt-4 text-xl text-ink">{c.title}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-mut">{c.body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ------------------------------------------------ forest banner */}
+      <section className="mx-auto max-w-6xl px-4 py-14">
+        <Reveal>
+          <div className="banner-forest relative overflow-hidden rounded-3xl px-8 py-16 sm:px-14">
+            <div className="outline-type display pointer-events-none absolute -bottom-6 left-0 whitespace-nowrap text-[7rem] sm:text-[10rem]" aria-hidden>
+              100% ON-CHAIN
+            </div>
+            <div className="relative grid gap-10 sm:grid-cols-3">
+              {[
+                {
+                  title: "Trustless by design",
+                  body: "We never hold funds. Vaults can only pay their beneficiary — enforced by the contract, not a promise.",
+                },
+                {
+                  title: "0% commission, in code",
+                  body: "There is no fee parameter in the contract. Read the source: 100% of every wei reaches the cause.",
+                },
+                {
+                  title: "Verifiable forever",
+                  body: "Every deposit and every payout is a public transaction on Robinhood Chain. Audit the whole history yourself.",
+                },
+              ].map((c) => (
+                <div key={c.title}>
+                  <h3 className="display text-lg text-up">{c.title}</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-creamdark/75">{c.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ------------------------------------------------ recent payouts */}
+      <section className="mx-auto max-w-6xl px-4 pb-24 pt-6">
+        <Reveal>
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="eyebrow">Transparency</p>
+              <h2 className="display mt-3 text-3xl text-ink">Recent payouts</h2>
+            </div>
+            <Link href="/terminal" className="btn-ghost hidden px-5 py-2.5 text-xs sm:block">
+              Live terminal →
+            </Link>
+          </div>
+        </Reveal>
+        <Reveal delay={1}>
+          <div className="scrollbar-thin mt-8 overflow-x-auto rounded-3xl border border-line bg-card">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line text-left">
+                  <th className="microlabel p-4">Campaign</th>
+                  <th className="microlabel p-4">Amount</th>
+                  <th className="microlabel p-4">Beneficiary</th>
+                  <th className="microlabel p-4">Tx</th>
+                  <th className="microlabel p-4">When</th>
+                </tr>
+              </thead>
+              <tbody className="mono">
+                {(donations ?? []).slice(0, 8).map((d) => (
+                  <tr key={d.id} className="border-b border-line/50 transition-colors last:border-0 hover:bg-card2/40">
+                    <td className="p-4">
+                      <Link href={`/campaign/${d.campaign_id}`} className="font-semibold text-updeep hover:underline">
+                        {d.campaign_name ?? `#${d.campaign_id}`}
+                      </Link>
+                    </td>
+                    <td className="tnum p-4 font-semibold text-ink">
+                      {fmtEth(d.amount)} ETH
+                      {d.amount_usd ? <span className="ml-1 text-mut">({fmtUsd(d.amount_usd)})</span> : null}
+                    </td>
+                    <td className="p-4 text-mut">{shortAddr(d.beneficiary)}</td>
+                    <td className="p-4">
+                      <a href={`${EXPLORER}/tx/${d.tx_hash}`} target="_blank" rel="noreferrer" className="text-mut transition hover:text-updeep">
+                        {shortAddr(d.tx_hash)} ↗
+                      </a>
+                    </td>
+                    <td className="p-4 text-mut">{timeAgo(d.ts)}</td>
+                  </tr>
+                ))}
+                {(donations ?? []).length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="p-10 text-center text-mut">
+                      No payouts yet —{" "}
+                      <Link href="/create" className="font-semibold text-updeep hover:underline">
+                        be the first cause
+                      </Link>
+                      .
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Reveal>
       </section>
     </div>
   );

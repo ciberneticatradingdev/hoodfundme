@@ -19,4 +19,7 @@ export const FUND_ADDRESS = (process.env.NEXT_PUBLIC_FUND_ADDRESS ||
 export const EXPLORER =
   process.env.NEXT_PUBLIC_EXPLORER || "https://robinhoodchain.blockscout.com";
 export const BACKEND =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4100";
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  (process.env.NODE_ENV === "development"
+    ? "http://localhost:4100"
+    : "https://hoodfundme-production.up.railway.app");

@@ -8,6 +8,7 @@ import { fetchCampaign } from "@/lib/api";
 import { fmtEth, fmtUsd, shortAddr, timeAgo } from "@/lib/format";
 import { EXPLORER, FUND_ADDRESS } from "@/lib/chain";
 import { fundAbi } from "@/lib/abi";
+import { Reveal, CountUp } from "@/components/motion";
 
 export default function CampaignPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -19,10 +20,18 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
   });
   const { isConnected } = useAccount();
   const [amount, setAmount] = useState("0.01");
+  const [copied, setCopied] = useState(false);
   const { writeContract, data: txHash, isPending, error } = useWriteContract();
   const { isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
-  if (!data) return <div className="p-10 text-center text-mut">Loading…</div>;
+  if (!data) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-14">
+        <div className="skeleton h-10 w-72 rounded-xl" />
+        <div className="skeleton mt-6 h-40 rounded-3xl" />
+      </div>
+    );
+  }
   const { campaign: c, donations, deposits } = data;
 
   const donate = () => {
@@ -35,108 +44,148 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
     });
   };
 
+  const copyVault = async () => {
+    await navigator.clipboard.writeText(c.vault);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">{c.name}</h1>
-          {c.description && <p className="mt-2 max-w-xl text-mut">{c.description}</p>}
-          {c.cause_url && (
-            <a href={c.cause_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-sm text-up hover:underline">
-              About this cause ↗
-            </a>
-          )}
+    <div className="mx-auto max-w-4xl px-4 py-14">
+      <Reveal>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="eyebrow">Campaign #{c.id}</p>
+            <h1 className="display mt-2 text-4xl text-ink sm:text-5xl">{c.name}</h1>
+            {c.description && (
+              <p className="mt-4 max-w-xl leading-relaxed text-mut">{c.description}</p>
+            )}
+            {c.cause_url && (
+              <a
+                href={c.cause_url}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-block text-sm font-semibold text-updeep hover:underline"
+              >
+                About this cause ↗
+              </a>
+            )}
+          </div>
+          <span
+            className={`microlabel shrink-0 rounded-full px-3 py-1.5 ${
+              c.active ? "bg-updim !text-updeep" : "bg-card2"
+            }`}
+          >
+            {c.active ? "active" : "paused"}
+          </span>
         </div>
-        <span className={`rounded px-2 py-1 text-xs uppercase ${c.active ? "bg-updim text-up" : "bg-card2 text-mut"}`}>
-          {c.active ? "active" : "paused"}
-        </span>
-      </div>
+      </Reveal>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border border-line bg-card p-4 text-center">
-          <div className="mono text-xl font-bold text-up">{fmtEth(Number(c.total_raised))} ETH</div>
-          <div className="text-[10px] uppercase tracking-widest text-mut">donated</div>
+      <Reveal delay={1}>
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="card-pop p-5 text-center">
+            <div className="display mono text-2xl text-updeep">
+              <CountUp value={Number(c.total_raised)} format={(n) => `${fmtEth(n)}`} /> ETH
+            </div>
+            <div className="microlabel mt-1.5">donated</div>
+          </div>
+          <div className="card-pop p-5 text-center">
+            <div className="display mono text-2xl text-ink">
+              <CountUp value={Number(c.pending)} format={(n) => `${fmtEth(n)}`} /> ETH
+            </div>
+            <div className="microlabel mt-1.5">pending in vault</div>
+          </div>
+          <div className="card-pop col-span-2 p-5 text-center sm:col-span-1">
+            <div className="mono text-sm font-bold text-ink">{shortAddr(c.beneficiary)}</div>
+            <div className="microlabel mt-1.5">beneficiary</div>
+          </div>
         </div>
-        <div className="rounded-lg border border-line bg-card p-4 text-center">
-          <div className="mono text-xl font-bold">{fmtEth(Number(c.pending))} ETH</div>
-          <div className="text-[10px] uppercase tracking-widest text-mut">pending in vault</div>
-        </div>
-        <div className="col-span-2 rounded-lg border border-line bg-card p-4 text-center sm:col-span-1">
-          <div className="mono text-sm font-bold">{shortAddr(c.beneficiary)}</div>
-          <div className="text-[10px] uppercase tracking-widest text-mut">beneficiary</div>
-        </div>
-      </div>
+      </Reveal>
 
-      {/* Vault address — the fee target */}
-      <div className="mt-6 rounded-lg border border-up/40 bg-updim/30 p-5">
-        <p className="text-xs uppercase tracking-widest text-up">Vault address — point your fees here</p>
-        <p className="mono mt-2 break-all text-sm">{c.vault}</p>
-        <p className="mt-2 text-xs text-mut">
-          Any ETH sent to this address on Robinhood Chain is forwarded 100% to the
-          beneficiary. Set it as your token&apos;s fee receiver, tip jar, or revenue split.
-        </p>
-      </div>
+      {/* Vault — the fee target */}
+      <Reveal delay={2}>
+        <div className="banner-forest mt-8 overflow-hidden rounded-3xl p-8">
+          <p className="eyebrow !text-up">Vault address — point your fees here</p>
+          <button
+            onClick={copyVault}
+            className="mono mt-3 block w-full break-all text-left text-sm text-creamdark transition hover:text-up"
+            title="Copy"
+          >
+            {c.vault} {copied ? "✓ copied" : "⧉"}
+          </button>
+          <p className="mt-3 text-xs leading-relaxed text-creamdark/60">
+            Any ETH sent to this address on Robinhood Chain is forwarded 100% to the
+            beneficiary. Set it as your token&apos;s fee receiver, tip jar, or revenue split.
+          </p>
+        </div>
+      </Reveal>
 
       {/* Direct donate */}
-      <div className="mt-6 rounded-lg border border-line bg-card p-5">
-        <p className="mb-3 font-bold">Donate directly</p>
-        <div className="flex gap-2">
-          <input
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="mono w-32 rounded-md border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-up"
-            placeholder="0.01"
-          />
-          <span className="self-center text-sm text-mut">ETH</span>
-          <button
-            onClick={donate}
-            disabled={!isConnected || isPending}
-            className="rounded-md bg-up px-5 py-2 text-sm font-semibold text-bg hover:opacity-90 disabled:opacity-40"
-          >
-            {isPending ? "Confirm in wallet…" : "Donate"}
-          </button>
+      <Reveal delay={2}>
+        <div className="card-pop mt-6 p-7">
+          <p className="display text-lg text-ink">Donate directly</p>
+          <div className="mt-4 flex gap-2">
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="mono w-36 rounded-full border border-line bg-bg px-5 py-3 text-sm outline-none transition focus:border-up"
+              placeholder="0.01"
+            />
+            <span className="mono self-center text-sm text-mut">ETH</span>
+            <button
+              onClick={donate}
+              disabled={!isConnected || isPending}
+              className="btn-green px-7 py-3 text-sm disabled:opacity-40"
+            >
+              {isPending ? "Confirm in wallet…" : "Donate"}
+            </button>
+          </div>
+          {!isConnected && (
+            <p className="mt-3 text-xs text-mut">Connect your wallet to donate.</p>
+          )}
+          {isSuccess && txHash && (
+            <p className="mono mt-3 text-xs text-updeep">
+              Sent!{" "}
+              <a href={`${EXPLORER}/tx/${txHash}`} target="_blank" rel="noreferrer" className="underline">
+                {shortAddr(txHash)} ↗
+              </a>{" "}
+              <button onClick={() => refetch()} className="text-mut underline">refresh</button>
+            </p>
+          )}
+          {error && <p className="mt-3 text-xs text-down">{error.message.split("\n")[0]}</p>}
         </div>
-        {!isConnected && <p className="mt-2 text-xs text-mut">Connect your wallet to donate.</p>}
-        {isSuccess && txHash && (
-          <p className="mono mt-2 text-xs text-up">
-            Sent!{" "}
-            <a href={`${EXPLORER}/tx/${txHash}`} target="_blank" rel="noreferrer" className="underline">
-              {shortAddr(txHash)} ↗
-            </a>{" "}
-            <button onClick={() => refetch()} className="text-mut underline">refresh</button>
-          </p>
-        )}
-        {error && <p className="mt-2 text-xs text-down">{error.message.split("\n")[0]}</p>}
-      </div>
+      </Reveal>
 
       {/* Activity */}
-      <div className="mt-8 grid gap-6 sm:grid-cols-2">
-        <div>
-          <h2 className="mb-3 font-bold">Payouts</h2>
-          <div className="space-y-2">
+      <div className="mt-12 grid gap-8 sm:grid-cols-2">
+        <Reveal>
+          <h2 className="display mb-4 text-xl text-ink">Payouts</h2>
+          <div className="space-y-2.5">
             {donations.map((d) => (
-              <div key={d.id} className="mono flex justify-between rounded-md border border-line bg-card p-3 text-xs">
-                <span className="text-up">{fmtEth(d.amount)} ETH{d.amount_usd ? ` (${fmtUsd(d.amount_usd)})` : ""}</span>
-                <a href={`${EXPLORER}/tx/${d.tx_hash}`} target="_blank" rel="noreferrer" className="text-mut hover:text-up">
+              <div key={d.id} className="mono flex items-center justify-between rounded-2xl border border-line bg-card p-4 text-xs">
+                <span className="tnum font-bold text-updeep">
+                  {fmtEth(d.amount)} ETH{d.amount_usd ? ` (${fmtUsd(d.amount_usd)})` : ""}
+                </span>
+                <a href={`${EXPLORER}/tx/${d.tx_hash}`} target="_blank" rel="noreferrer" className="text-mut transition hover:text-updeep">
                   {shortAddr(d.tx_hash)} ↗ · {timeAgo(d.ts)}
                 </a>
               </div>
             ))}
             {donations.length === 0 && <p className="text-sm text-mut">No payouts yet.</p>}
           </div>
-        </div>
-        <div>
-          <h2 className="mb-3 font-bold">Vault deposits</h2>
-          <div className="space-y-2">
+        </Reveal>
+        <Reveal delay={1}>
+          <h2 className="display mb-4 text-xl text-ink">Vault deposits</h2>
+          <div className="space-y-2.5">
             {deposits.map((d, i) => (
-              <div key={i} className="mono flex justify-between rounded-md border border-line bg-card p-3 text-xs">
-                <span>+{fmtEth(Number(d.amount))} ETH</span>
+              <div key={i} className="mono flex items-center justify-between rounded-2xl border border-line bg-card p-4 text-xs">
+                <span className="tnum font-bold text-ink">+{fmtEth(Number(d.amount))} ETH</span>
                 <span className="text-mut">{timeAgo(d.detected_at)}</span>
               </div>
             ))}
             {deposits.length === 0 && <p className="text-sm text-mut">No deposits detected yet.</p>}
           </div>
-        </div>
+        </Reveal>
       </div>
     </div>
   );
