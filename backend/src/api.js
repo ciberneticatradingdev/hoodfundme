@@ -14,7 +14,7 @@ import { listCharities, resolveCharity } from "./charities.js";
 export function createApi() {
   const app = express();
   app.use(cors());
-  app.use(express.json());
+  app.use(express.json({ limit: "3mb" }));
 
   app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
@@ -101,6 +101,87 @@ export function createApi() {
     }
   });
 
+  // ------------------------------------------------- logo uploads (DB-backed)
+
+  app.post("/api/uploads", async (req, res) => {
+    try {
+      const { dataUrl } = req.body || {};
+      const m = /^data:(image\/(?:png|jpeg|jpg|webp|gif));base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ""));
+      if (!m) return res.status(400).json({ error: "dataUrl must be a base64 png/jpeg/webp/gif" });
+      const buf = Buffer.from(m[2], "base64");
+      if (buf.length > 1_500_000) return res.status(400).json({ error: "image too large (max 1.5MB)" });
+      if (buf.length < 100) return res.status(400).json({ error: "empty image" });
+      const id = crypto.randomBytes(12).toString("hex");
+      await sql`insert into uploads (id, mime, data) values (${id}, ${m[1]}, ${buf})`;
+      res.json({ id, url: `${config.publicApiUrl}/api/uploads/${id}` });
+    } catch (err) {
+      console.error("[api/uploads] error:", err.message);
+      res.status(500).json({ error: "upload failed" });
+    }
+  });
+
+  app.get("/api/uploads/:id", async (req, res) => {
+    try {
+      const id = String(req.params.id);
+      if (!/^[a-f0-9]{24}$/.test(id)) return res.status(400).end();
+      const [row] = await sql`select mime, data from uploads where id = ${id}`;
+      if (!row) return res.status(404).end();
+      res.set("Content-Type", row.mime);
+      res.set("Cache-Control", "public, max-age=31536000, immutable");
+      res.send(Buffer.from(row.data));
+    } catch {
+      res.status(500).end();
+    }
+  });
+
+  // ------------------------------------------------- gofundme preview scraper
+
+  const gfPreviewCache = new Map();
+
+  app.get("/api/gofundme/preview", async (req, res) => {
+    try {
+      const url = String(req.query.url || "").trim();
+      if (!/^https:\/\/(www\.)?gofundme\.com\/f\/[A-Za-z0-9-]+\/?($|\?)/.test(url))
+        return res.status(400).json({ error: "invalid gofundme url" });
+      const clean = url.split("?")[0].replace(/\/$/, "");
+      const cached = gfPreviewCache.get(clean);
+      if (cached && Date.now() - cached.ts < 3_600_000) return res.json(cached.data);
+
+      const html = await fetch(clean, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml",
+        },
+        signal: AbortSignal.timeout(9000),
+      }).then((r) => (r.ok ? r.text() : null));
+
+      const meta = (prop) => {
+        if (!html) return "";
+        const re1 = new RegExp(`<meta[^>]*property=["']${prop}["'][^>]*content=["']([^"']*)["']`, "i");
+        const re2 = new RegExp(`<meta[^>]*content=["']([^"']*)["'][^>]*property=["']${prop}["']`, "i");
+        const m = re1.exec(html) || re2.exec(html);
+        return m ? m[1] : "";
+      };
+      const decode = (s) => s.replace(/&amp;/g, "&").replace(/&#x27;|&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+
+      const slug = clean.match(/\/f\/([A-Za-z0-9-]+)/)[1];
+      const data = {
+        url: clean,
+        slug,
+        title: decode(meta("og:title")) || slug.replace(/-/g, " "),
+        description: decode(meta("og:description")).slice(0, 300),
+        image: meta("og:image"),
+        scraped: Boolean(html),
+      };
+      gfPreviewCache.set(clean, { ts: Date.now(), data });
+      if (gfPreviewCache.size > 500) gfPreviewCache.clear();
+      res.json(data);
+    } catch (err) {
+      console.warn("[api/gofundme] preview failed:", err.message);
+      res.status(502).json({ error: "could not fetch gofundme page" });
+    }
+  });
+
   app.get("/api/launches", async (_req, res) => {
     try {
       const rows = await sql`select l.launch_id, l.campaign_id, l.name, l.symbol, l.logo, l.description,
@@ -144,6 +225,7 @@ export function createApi() {
       const sym = String(symbol || "").trim().toUpperCase();
       if (!/^[A-Z0-9]{1,10}$/.test(sym)) return res.status(400).json({ error: "symbol: 1-10 letters/digits" });
       if (!userWallet || !isAddress(userWallet)) return res.status(400).json({ error: "userWallet: valid address required (refund destination)" });
+      if (!logo || !/^https?:\/\//.test(String(logo))) return res.status(400).json({ error: "logo required — upload an image first" });
 
       // The cause is created right here. Three ways in:
       //   charityId    → verified org, direct crypto transfer (donate.gg et al)
@@ -175,12 +257,16 @@ export function createApi() {
           if (!config.gofundmePayoutWallet || !isAddress(config.gofundmePayoutWallet))
             return res.status(503).json({ error: "GoFundMe mode not configured (GOFUNDME_PAYOUT_WALLET)" });
           const slug = gf.match(/\/f\/([A-Za-z0-9-]+)/)[1];
+          const clean = gf.split("?")[0].replace(/\/$/, "");
+          const preview = gfPreviewCache.get(clean)?.data;
           cause = {
             kind: "gofundme",
-            name: `GoFundMe: ${slug.replace(/-/g, " ").slice(0, 60)}`,
+            name: (preview?.title || `GoFundMe: ${slug.replace(/-/g, " ")}`).slice(0, 78),
             beneficiary: config.gofundmePayoutWallet,
-            url: gf.split("?")[0],
-            description: "Deposits are made to this GoFundMe every 6 hours — executed automatically by grokbot.",
+            url: clean,
+            description: (preview?.description || "") +
+              (preview?.description ? " — " : "") +
+              "Deposits are made to this GoFundMe every 6 hours, executed automatically by grokbot.",
           };
         } else {
           if (!causeName || String(causeName).trim().length === 0 || String(causeName).length > 80)

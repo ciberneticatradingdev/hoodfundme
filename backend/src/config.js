@@ -59,4 +59,6 @@ export const config = {
   // GoFundMe mode: vault payouts land here; grokbot executes the GoFundMe
   // deposit run every 6 hours
   gofundmePayoutWallet: process.env.GOFUNDME_PAYOUT_WALLET || "",
+  // public URL of this backend — used to build absolute upload URLs
+  publicApiUrl: process.env.PUBLIC_API_URL || "https://hoodfundme-production.up.railway.app",
 };

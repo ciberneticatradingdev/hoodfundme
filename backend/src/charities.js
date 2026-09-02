@@ -7,22 +7,22 @@ import { config } from "./config.js";
 /// When DONATE_GG_API_KEY is set, the live donate.gg list is merged in.
 
 export const CATALOG = [
-  { id: "st-jude", name: "St. Jude Children's Research Hospital", category: "Children & Health", website: "https://www.stjude.org", source: "donate.gg" },
-  { id: "make-a-wish", name: "Make-A-Wish Foundation", category: "Children", website: "https://wish.org", source: "donate.gg" },
-  { id: "team-water", name: "Team Water", category: "Clean Water", website: "https://teamwater.org", source: "donate.gg" },
-  { id: "charity-water", name: "charity: water", category: "Clean Water", website: "https://www.charitywater.org", source: "direct" },
-  { id: "save-the-children", name: "Save the Children", category: "Children", website: "https://www.savethechildren.org", source: "direct" },
-  { id: "direct-relief", name: "Direct Relief", category: "Humanitarian", website: "https://www.directrelief.org", source: "direct" },
-  { id: "givedirectly", name: "GiveDirectly", category: "Global Poverty", website: "https://www.givedirectly.org", source: "direct" },
-  { id: "msf", name: "Doctors Without Borders (MSF)", category: "Health", website: "https://www.doctorswithoutborders.org", source: "direct" },
-  { id: "american-cancer-society", name: "American Cancer Society", category: "Health", website: "https://www.cancer.org", source: "direct" },
-  { id: "wwf", name: "World Wildlife Fund", category: "Environment & Animals", website: "https://www.worldwildlife.org", source: "direct" },
-  { id: "rainforest-foundation", name: "Rainforest Foundation US", category: "Environment", website: "https://rainforestfoundation.org", source: "direct" },
-  { id: "the-water-project", name: "The Water Project", category: "Clean Water", website: "https://thewaterproject.org", source: "direct" },
-  { id: "eff", name: "Electronic Frontier Foundation", category: "Digital Rights", website: "https://www.eff.org", source: "direct" },
-  { id: "internet-archive", name: "Internet Archive", category: "Digital Rights", website: "https://archive.org", source: "direct" },
-  { id: "unicef", name: "UNICEF", category: "Children & Humanitarian", website: "https://www.unicef.org", source: "direct" },
-  { id: "best-friends", name: "Best Friends Animal Society", category: "Animals", website: "https://bestfriends.org", source: "direct" },
+  { id: "st-jude", name: "St. Jude Children's Research Hospital", category: "Children & Health", website: "https://www.stjude.org", description: "Leading pediatric treatment and research center — families never receive a bill for treatment, travel, housing or food.", source: "donate.gg" },
+  { id: "make-a-wish", name: "Make-A-Wish Foundation", category: "Children", website: "https://wish.org", description: "Grants life-changing wishes for children with critical illnesses.", source: "donate.gg" },
+  { id: "team-water", name: "Team Water", category: "Clean Water", website: "https://teamwater.org", description: "The creator-led campaign bringing clean water to millions worldwide.", source: "donate.gg" },
+  { id: "charity-water", name: "charity: water", category: "Clean Water", website: "https://www.charitywater.org", description: "Funds clean and safe drinking water projects in developing countries — 100% of public donations go to the field.", source: "direct" },
+  { id: "save-the-children", name: "Save the Children", category: "Children", website: "https://www.savethechildren.org", description: "Health, education and protection for children in 100+ countries.", source: "direct" },
+  { id: "direct-relief", name: "Direct Relief", category: "Humanitarian", website: "https://www.directrelief.org", description: "Medical aid to people affected by poverty and emergencies, worldwide.", source: "direct" },
+  { id: "givedirectly", name: "GiveDirectly", category: "Global Poverty", website: "https://www.givedirectly.org", description: "Sends cash directly to people living in extreme poverty — radically efficient, rigorously measured.", source: "direct" },
+  { id: "msf", name: "Doctors Without Borders (MSF)", category: "Health", website: "https://www.doctorswithoutborders.org", description: "Emergency medical care where it's needed most — conflict zones, epidemics, disasters.", source: "direct" },
+  { id: "american-cancer-society", name: "American Cancer Society", category: "Health", website: "https://www.cancer.org", description: "Funds cancer research, patient support, and prevention programs.", source: "direct" },
+  { id: "wwf", name: "World Wildlife Fund", category: "Environment & Animals", website: "https://www.worldwildlife.org", description: "Conservation of nature and reduction of the most pressing threats to biodiversity.", source: "direct" },
+  { id: "rainforest-foundation", name: "Rainforest Foundation US", category: "Environment", website: "https://rainforestfoundation.org", description: "Protects rainforests by securing land rights for indigenous communities.", source: "direct" },
+  { id: "the-water-project", name: "The Water Project", category: "Clean Water", website: "https://thewaterproject.org", description: "Reliable water projects for communities in sub-Saharan Africa.", source: "direct" },
+  { id: "eff", name: "Electronic Frontier Foundation", category: "Digital Rights", website: "https://www.eff.org", description: "Defends civil liberties in the digital world — privacy, free expression, innovation.", source: "direct" },
+  { id: "internet-archive", name: "Internet Archive", category: "Digital Rights", website: "https://archive.org", description: "Universal access to all knowledge — the library of the internet.", source: "direct" },
+  { id: "unicef", name: "UNICEF", category: "Children & Humanitarian", website: "https://www.unicef.org", description: "Works in 190+ countries for the rights and wellbeing of every child.", source: "direct" },
+  { id: "best-friends", name: "Best Friends Animal Society", category: "Animals", website: "https://bestfriends.org", description: "Working to end the killing of dogs and cats in America's shelters.", source: "direct" },
 ];
 
 // Per-org payout addresses, wired via env: CHARITY_ADDR_<ID with - as _> = 0x…
@@ -86,7 +86,9 @@ async function fetchEveryOrg() {
       name: n.name,
       category: `every.org · ${n.cause}`,
       website: n.profileUrl || `https://www.every.org/${n.slug || ""}`,
-      logo: n.logoUrl || "",
+      logo: n.logoUrl ? n.logoUrl.replace("w_24,h_24", "w_96,h_96") : "",
+      description: String(n.description || "").slice(0, 260),
+      location: n.location || "",
       source: "every.org",
     }));
     if (list.length > 0) everyOrgCache = { ts: Date.now(), list };

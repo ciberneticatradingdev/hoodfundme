@@ -56,8 +56,19 @@ export interface Charity {
   category: string;
   website: string;
   logo?: string;
+  description?: string;
+  location?: string;
   source: string;
   wired: boolean;
+}
+
+export interface GofundmePreview {
+  url: string;
+  slug: string;
+  title: string;
+  description: string;
+  image: string;
+  scraped: boolean;
 }
 
 export interface Launch {
@@ -99,6 +110,19 @@ export const fetchCampaign = (id: number) =>
   );
 export const fetchLaunches = () => get<Launch[]>("/api/launches");
 export const fetchCharities = () => get<Charity[]>("/api/charities");
+export const fetchGofundmePreview = (url: string) =>
+  get<GofundmePreview>(`/api/gofundme/preview?url=${encodeURIComponent(url)}`);
+
+export async function uploadLogo(dataUrl: string): Promise<{ id: string; url: string }> {
+  const res = await fetch(`${BACKEND}/api/uploads`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dataUrl }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || `upload failed (${res.status})`);
+  return json;
+}
 export const fetchLaunch = (id: string) => get<Launch>(`/api/launches/${id}`);
 export async function createLaunch(input: {
   campaignId?: number;

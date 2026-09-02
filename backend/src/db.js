@@ -72,6 +72,12 @@ export async function initSchema() {
     launched_at timestamptz,
     last_claim_at timestamptz
   )`;
+  await sql`create table if not exists uploads (
+    id text primary key,
+    mime text not null,
+    data bytea not null,
+    created_at timestamptz not null default now()
+  )`;
   await sql`create table if not exists events (
     id serial primary key,
     type text not null,
