@@ -75,12 +75,17 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
             )}
             {c.kind === "gofundme" && (
               <p className="mono mt-3 inline-block rounded-full bg-updim px-3 py-1.5 text-[11px] text-updeep">
-                🤖 grokbot deposits to this GoFundMe every 6 hours
+                GoFundMe campaign · 🤖 grokbot deposits every 6 hours
               </p>
             )}
             {c.kind === "org" && (
               <p className="mono mt-3 inline-block rounded-full bg-updim px-3 py-1.5 text-[11px] text-updeep">
-                ✓ verified charity — direct on-chain transfer
+                every.org · verified charity — direct giving
+              </p>
+            )}
+            {(!c.kind || c.kind === "custom") && (
+              <p className="mono mt-3 inline-block rounded-full bg-card2 px-3 py-1.5 text-[11px] text-mut">
+                custom cause · on-chain beneficiary
               </p>
             )}
           </div>

@@ -43,7 +43,7 @@ export function createApi() {
 
   app.get("/api/campaigns", async (_req, res) => {
     try {
-      const rows = await sql`select * from campaigns order by created_at desc`;
+      const rows = await sql`select * from campaigns where active = true order by created_at desc`;
       res.json(rows);
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -320,6 +320,21 @@ export function createApi() {
           };
         }
 
+        // One campaign per cause: launching for the same org or the same
+        // GoFundMe joins the existing campaign instead of minting a twin.
+        const [existing] =
+          cause.kind === "org"
+            ? await sql`select id, name from campaigns
+                where kind = 'org' and lower(name) = lower(${cause.name}) and active = true
+                order by id asc limit 1`
+            : cause.kind === "gofundme"
+              ? await sql`select id, name from campaigns
+                  where kind = 'gofundme' and cause_url = ${cause.url} and active = true
+                  order by id asc limit 1`
+              : [];
+        if (existing) {
+          campaign = existing;
+        } else {
         const created = await createCampaignOnChain({
           name: cause.name,
           description: cause.description,
@@ -333,6 +348,7 @@ export function createApi() {
             ${cause.url}, ${created.txHash}, ${cause.kind})
           on conflict (id) do nothing`;
         campaign = { id: created.id, name: cause.name };
+        }
       }
 
       const { depositEth: depositExpected } = await estimateDeposit(devBuy);

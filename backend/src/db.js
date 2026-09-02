@@ -94,6 +94,25 @@ export async function initSchema() {
   )`;
 }
 
+/// Hide duplicate campaigns (same org / same GoFundMe) that never got a live
+/// token and hold nothing — keeps the oldest one visible. Runs at boot.
+export async function dedupeCampaigns() {
+  const hidden = await sql`update campaigns c set active = false
+    where c.active
+      and c.total_raised = 0 and c.pending < 1e-12
+      and not exists (select 1 from launches l where l.campaign_id = c.id and l.status = 'live')
+      and exists (
+        select 1 from campaigns k
+        where k.id < c.id and k.kind = c.kind
+          and (
+            (c.kind = 'org' and lower(k.name) = lower(c.name)) or
+            (c.kind = 'gofundme' and k.cause_url = c.cause_url)
+          )
+      )
+    returning c.id, c.name`;
+  for (const h of hidden) console.log(`[db] hid duplicate campaign #${h.id} "${h.name}"`);
+}
+
 export async function getMeta(key) {
   const rows = await sql`select value from meta where key = ${key}`;
   return rows[0]?.value ?? null;

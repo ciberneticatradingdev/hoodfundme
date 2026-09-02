@@ -7,8 +7,8 @@ import { fmtEth } from "@/lib/format";
 import { Reveal } from "@/components/motion";
 
 const kindBadge: Record<string, { label: string; cls: string }> = {
-  org: { label: "✓ verified charity", cls: "bg-updim !text-updeep" },
-  gofundme: { label: "🤖 gofundme · grokbot 6h", cls: "bg-updim !text-updeep" },
+  org: { label: "every.org · verified", cls: "bg-updim !text-updeep" },
+  gofundme: { label: "GoFundMe · grokbot 🤖", cls: "bg-updim !text-updeep" },
   custom: { label: "custom cause", cls: "bg-card2" },
 };
 
