@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useAccount, useConnect } from "wagmi";
+import { useAccount } from "wagmi";
+import { openWalletModal } from "@/components/wallet-modal";
 import {
   fetchLaunch,
   createLaunch,
@@ -234,7 +235,6 @@ function CharityPicker({
 
 export default function LaunchPage() {
   const { address, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
 
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
@@ -536,11 +536,7 @@ export default function LaunchPage() {
                 {submitting ? "Creating launch wallet…" : "Get launch address"}
               </button>
             ) : (
-              <button
-                onClick={() => connect({ connector: connectors[0] })}
-                disabled={connectors.length === 0}
-                className="btn-green w-full py-4 text-sm disabled:opacity-40"
-              >
+              <button onClick={openWalletModal} className="btn-green w-full py-4 text-sm">
                 Connect wallet
               </button>
             )}

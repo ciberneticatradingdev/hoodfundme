@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { WalletModal } from "@/components/wallet-modal";
 
 const body = Inter({ variable: "--font-body", subsets: ["latin"] });
 const display = Inter_Tight({
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Navbar />
           <main className="flex-1">{children}</main>
           <Footer />
+          <WalletModal />
         </Providers>
       </body>
     </html>

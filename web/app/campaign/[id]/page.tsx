@@ -11,6 +11,7 @@ import { fundAbi } from "@/lib/abi";
 import Link from "next/link";
 import { Reveal, CountUp } from "@/components/motion";
 import { TokenCard } from "@/components/token-card";
+import { openWalletModal } from "@/components/wallet-modal";
 
 export default function CampaignPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -176,7 +177,9 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
             </button>
           </div>
           {!isConnected && (
-            <p className="mt-3 text-xs text-mut">Connect your wallet to donate.</p>
+            <button onClick={openWalletModal} className="mt-3 text-xs font-semibold text-updeep hover:underline">
+              Connect your wallet to donate →
+            </button>
           )}
           {isSuccess && txHash && (
             <p className="mono mt-3 text-xs text-updeep">
