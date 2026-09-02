@@ -61,4 +61,6 @@ export const config = {
   gofundmePayoutWallet: process.env.GOFUNDME_PAYOUT_WALLET || "",
   // public URL of this backend — used to build absolute upload URLs
   publicApiUrl: process.env.PUBLIC_API_URL || "https://hoodfundme-production.up.railway.app",
+  // public URL of the site — every coin's website metadata points to its page here
+  siteUrl: process.env.SITE_URL || "https://hoodfundme.vercel.app",
 };

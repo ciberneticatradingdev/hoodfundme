@@ -240,6 +240,7 @@ export default function LaunchPage() {
   const [symbol, setSymbol] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [description, setDescription] = useState("");
+  const [twitter, setTwitter] = useState("");
   const [mode, setMode] = useState<"org" | "gofundme">("org");
   const [charity, setCharity] = useState<Charity | null>(null);
   const [gofundmeUrl, setGofundmeUrl] = useState("");
@@ -298,6 +299,7 @@ export default function LaunchPage() {
         symbol: symbol.trim().toUpperCase(),
         logo: logoUrl,
         description: description.trim(),
+        twitter: twitter.trim(),
         ...(mode === "org" ? { charityId: charity!.id } : { gofundmeUrl: gofundmeUrl.trim() }),
         userWallet: address,
       });
@@ -449,6 +451,19 @@ export default function LaunchPage() {
             <div>
               <label className="microlabel">Description (optional)</label>
               <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} maxLength={500} className={inputCls} placeholder="Why this coin, why this cause" />
+            </div>
+
+            <div>
+              <label className="microlabel">X (optional)</label>
+              <input
+                value={twitter}
+                onChange={(e) => setTwitter(e.target.value)}
+                className={`mono ${inputCls}`}
+                placeholder="@handle or https://x.com/…"
+              />
+              <p className="mt-2 text-xs text-mut">
+                The coin&apos;s website is set automatically to its page on HoodFundMe.
+              </p>
             </div>
 
             {/* ------------------------------------------------ the cause */}

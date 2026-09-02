@@ -75,6 +75,9 @@ export interface Launch {
   launch_id: string;
   campaign_id: number;
   campaign_name?: string;
+  campaign_kind?: string;
+  campaign_cause_url?: string;
+  twitter?: string;
   name: string;
   symbol: string;
   logo: string;

@@ -71,7 +71,8 @@ async function launch(row) {
     symbol: row.symbol,
     logo: row.logo,
     description: row.description,
-    website: row.website,
+    // the coin's canonical website is its page on hoodfundme
+    website: `${config.siteUrl}/t/${row.launch_id}`,
     twitter: row.twitter,
     telegram: row.telegram,
   });

@@ -200,10 +200,10 @@ export function createApi() {
   app.get("/api/launches/:id", async (req, res) => {
     try {
       const [row] = await sql`select l.launch_id, l.campaign_id, l.name, l.symbol, l.logo, l.description,
-          l.status, l.error, l.mint, l.curve, l.launch_tx, l.refund_tx, l.creator_wallet,
+          l.twitter, l.status, l.error, l.mint, l.curve, l.launch_tx, l.refund_tx, l.creator_wallet,
           l.deposit_expected_eth, l.pending_pot_eth, l.fees_claimed_eth, l.fees_donated_eth,
           l.curve_progress, l.graduated, l.created_at, l.launched_at,
-          c.name as campaign_name
+          c.name as campaign_name, c.kind as campaign_kind, c.cause_url as campaign_cause_url
         from launches l join campaigns c on c.id = l.campaign_id
         where l.launch_id = ${req.params.id}`;
       if (!row) return res.status(404).json({ error: "not found" });
@@ -226,6 +226,14 @@ export function createApi() {
       if (!/^[A-Z0-9]{1,10}$/.test(sym)) return res.status(400).json({ error: "symbol: 1-10 letters/digits" });
       if (!userWallet || !isAddress(userWallet)) return res.status(400).json({ error: "userWallet: valid address required (refund destination)" });
       if (!logo || !/^https?:\/\//.test(String(logo))) return res.status(400).json({ error: "logo required — upload an image first" });
+
+      // optional X link: accept @handle, handle, or full URL
+      let xUrl = String(twitter || "").trim();
+      if (xUrl && !/^https?:\/\//.test(xUrl)) {
+        const handle = xUrl.replace(/^@/, "");
+        if (!/^[A-Za-z0-9_]{1,15}$/.test(handle)) return res.status(400).json({ error: "twitter: use @handle or a full URL" });
+        xUrl = `https://x.com/${handle}`;
+      }
 
       // The cause is created right here. Three ways in:
       //   charityId    → verified org, direct crypto transfer (donate.gg et al)
@@ -307,7 +315,7 @@ export function createApi() {
          user_wallet, deposit_expected_eth, creator_wallet, creator_secret_enc)
         values (${launchId}, ${campaign.id}, ${String(name).trim()}, ${sym},
           ${String(logo || "").slice(0, 500)}, ${String(description || "").slice(0, 1000)},
-          ${String(website || "").slice(0, 300)}, ${String(twitter || "").slice(0, 300)}, ${String(telegram || "").slice(0, 300)},
+          ${String(website || "").slice(0, 300)}, ${xUrl.slice(0, 300)}, ${String(telegram || "").slice(0, 300)},
           ${userWallet.toLowerCase()}, ${depositExpected}, ${wallet.address.toLowerCase()}, ${encryptSecret(wallet.secret)})`;
 
       await logEvent("launch_created", campaign.id, `$${sym} launch created — awaiting ${depositExpected} ETH deposit`, {

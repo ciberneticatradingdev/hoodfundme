@@ -9,19 +9,21 @@ export function TokenCard({ t, showCampaign = true }: { t: Launch; showCampaign?
   return (
     <div className="card-pop p-6">
       <div className="flex items-center gap-3">
-        {t.logo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={t.logo} alt="" className="h-11 w-11 rounded-full border border-line object-cover" />
-        ) : (
-          <div className="display flex h-11 w-11 items-center justify-center rounded-full bg-forest text-sm text-up">
-            {t.symbol.slice(0, 2)}
-          </div>
-        )}
+        <Link href={`/t/${t.launch_id}`} className="shrink-0">
+          {t.logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={t.logo} alt="" className="h-11 w-11 rounded-full border border-line object-cover" />
+          ) : (
+            <div className="display flex h-11 w-11 items-center justify-center rounded-full bg-forest text-sm text-up">
+              {t.symbol.slice(0, 2)}
+            </div>
+          )}
+        </Link>
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2">
+          <Link href={`/t/${t.launch_id}`} className="flex items-baseline gap-2 hover:opacity-80">
             <span className="display truncate text-lg text-ink">{t.name}</span>
             <span className="mono text-xs font-bold text-updeep">${t.symbol}</span>
-          </div>
+          </Link>
           {showCampaign && t.campaign_name && (
             <Link href={`/campaign/${t.campaign_id}`} className="text-xs text-mut hover:text-updeep">
               → {t.campaign_name}
