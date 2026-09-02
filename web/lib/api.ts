@@ -23,6 +23,7 @@ export interface Campaign {
   total_raised: number;
   pending: number;
   active: boolean;
+  kind?: string;
   created_at: string;
   tx_hash: string;
 }
@@ -47,6 +48,16 @@ export interface FeedEvent {
   message: string;
   data: Record<string, unknown> | null;
   ts: string;
+}
+
+export interface Charity {
+  id: string;
+  name: string;
+  category: string;
+  website: string;
+  logo?: string;
+  source: string;
+  wired: boolean;
 }
 
 export interface Launch {
@@ -87,6 +98,7 @@ export const fetchCampaign = (id: number) =>
     `/api/campaigns/${id}`
   );
 export const fetchLaunches = () => get<Launch[]>("/api/launches");
+export const fetchCharities = () => get<Charity[]>("/api/charities");
 export const fetchLaunch = (id: string) => get<Launch>(`/api/launches/${id}`);
 export async function createLaunch(input: {
   campaignId?: number;
@@ -101,6 +113,8 @@ export async function createLaunch(input: {
   causeBeneficiary?: string;
   causeUrl?: string;
   causeDescription?: string;
+  charityId?: string;
+  gofundmeUrl?: string;
   userWallet: string;
 }): Promise<{ launchId: string; depositAddress: string; depositExpectedEth: number; timeoutMin: number }> {
   const res = await fetch(`${BACKEND}/api/launches`, {

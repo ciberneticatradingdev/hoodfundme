@@ -69,8 +69,18 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
                 rel="noreferrer"
                 className="mt-2 inline-block text-sm font-semibold text-updeep hover:underline"
               >
-                About this cause ↗
+                {c.kind === "gofundme" ? "View the GoFundMe ↗" : "About this cause ↗"}
               </a>
+            )}
+            {c.kind === "gofundme" && (
+              <p className="mono mt-3 inline-block rounded-full bg-updim px-3 py-1.5 text-[11px] text-updeep">
+                🤖 grokbot deposits to this GoFundMe every 6 hours
+              </p>
+            )}
+            {c.kind === "org" && (
+              <p className="mono mt-3 inline-block rounded-full bg-updim px-3 py-1.5 text-[11px] text-updeep">
+                ✓ verified charity — direct on-chain transfer
+              </p>
             )}
           </div>
           <span

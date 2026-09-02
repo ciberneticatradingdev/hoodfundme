@@ -42,6 +42,7 @@ export async function initSchema() {
     ts timestamptz not null,
     unique (tx_hash, log_index)
   )`;
+  await sql`alter table campaigns add column if not exists kind text not null default 'custom'`;
   await sql`create table if not exists launches (
     launch_id text primary key,
     campaign_id integer not null references campaigns(id),

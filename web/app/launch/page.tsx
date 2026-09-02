@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
 import { isAddress } from "viem";
-import { fetchLaunch, createLaunch } from "@/lib/api";
+import { useQuery as useQ } from "@tanstack/react-query";
+import { fetchLaunch, createLaunch, fetchCharities } from "@/lib/api";
 import { EXPLORER } from "@/lib/chain";
 import { fmtEth, shortAddr } from "@/lib/format";
 import { Reveal } from "@/components/motion";
@@ -20,10 +21,11 @@ export default function LaunchPage() {
   const [symbol, setSymbol] = useState("");
   const [logo, setLogo] = useState("");
   const [description, setDescription] = useState("");
-  const [causeName, setCauseName] = useState("");
-  const [causeBeneficiary, setCauseBeneficiary] = useState("");
-  const [causeUrl, setCauseUrl] = useState("");
+  const [mode, setMode] = useState<"org" | "gofundme">("org");
+  const [charityId, setCharityId] = useState("");
+  const [gofundmeUrl, setGofundmeUrl] = useState("");
   const [userWallet, setUserWallet] = useState("");
+  const { data: charities } = useQ({ queryKey: ["charities"], queryFn: fetchCharities });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [ticket, setTicket] = useState<{
@@ -35,10 +37,11 @@ export default function LaunchPage() {
   const [copied, setCopied] = useState(false);
 
   const refundWallet = userWallet || address || "";
+  const validGofundme = /^https:\/\/(www\.)?gofundme\.com\/f\/[A-Za-z0-9-]+/.test(gofundmeUrl.trim());
+  const causeOk = mode === "org" ? charityId !== "" : validGofundme;
   const canSubmit =
     name.trim() && /^[A-Za-z0-9]{1,10}$/.test(symbol.trim()) &&
-    causeName.trim() && isAddress(causeBeneficiary) &&
-    isAddress(refundWallet) && !submitting;
+    causeOk && isAddress(refundWallet) && !submitting;
 
   const { data: status } = useQuery({
     queryKey: ["launch", ticket?.launchId],
@@ -56,9 +59,9 @@ export default function LaunchPage() {
         symbol: symbol.trim().toUpperCase(),
         logo: logo.trim(),
         description: description.trim(),
-        causeName: causeName.trim(),
-        causeBeneficiary: causeBeneficiary.trim(),
-        causeUrl: causeUrl.trim(),
+        ...(mode === "org"
+          ? { charityId }
+          : { gofundmeUrl: gofundmeUrl.trim() }),
         userWallet: refundWallet,
       });
       setTicket(t);
@@ -216,29 +219,71 @@ export default function LaunchPage() {
             {/* ------------------------------------------------ the cause */}
             <div className="rounded-2xl border border-up/30 bg-updim/40 p-5">
               <p className="eyebrow">The cause — created with your launch</p>
-              <div className="mt-4 space-y-4">
-                <div>
-                  <label className="microlabel">Cause name</label>
-                  <input value={causeName} onChange={(e) => setCauseName(e.target.value)} maxLength={80} className={inputCls} placeholder="Clean water for Valparaíso" />
+
+              {/* mode picker */}
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMode("org")}
+                  className={`rounded-xl border p-3 text-left transition ${
+                    mode === "org" ? "border-up bg-card" : "border-line bg-transparent opacity-60 hover:opacity-100"
+                  }`}
+                >
+                  <div className="text-sm font-bold text-ink">Verified charity</div>
+                  <div className="mt-1 text-[11px] leading-snug text-mut">
+                    Direct crypto transfer to the org — donate.gg &amp; friends
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("gofundme")}
+                  className={`rounded-xl border p-3 text-left transition ${
+                    mode === "gofundme" ? "border-up bg-card" : "border-line bg-transparent opacity-60 hover:opacity-100"
+                  }`}
+                >
+                  <div className="text-sm font-bold text-ink">GoFundMe campaign</div>
+                  <div className="mt-1 text-[11px] leading-snug text-mut">
+                    Deposits every 6h — executed automatically by grokbot
+                  </div>
+                </button>
+              </div>
+
+              {mode === "org" && (
+                <div className="mt-4">
+                  <label className="microlabel">Charity</label>
+                  <select value={charityId} onChange={(e) => setCharityId(e.target.value)} className={inputCls}>
+                    <option value="">Select a charity…</option>
+                    {(charities ?? []).map((c) => (
+                      <option key={c.id} value={c.id} disabled={!c.wired}>
+                        {c.name} — {c.category}{c.wired ? "" : " (soon)"}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-xs text-mut">
+                    Every creator fee is transferred directly on-chain to the selected org.
+                  </p>
                 </div>
-                <div>
-                  <label className="microlabel">Beneficiary address</label>
-                  <input value={causeBeneficiary} onChange={(e) => setCauseBeneficiary(e.target.value)} className={`mono ${inputCls}`} placeholder="0x…" />
-                  {causeBeneficiary && !isAddress(causeBeneficiary) && (
-                    <p className="mt-2 text-xs text-down">Not a valid address.</p>
+              )}
+
+              {mode === "gofundme" && (
+                <div className="mt-4">
+                  <label className="microlabel">GoFundMe link</label>
+                  <input
+                    value={gofundmeUrl}
+                    onChange={(e) => setGofundmeUrl(e.target.value)}
+                    className={`mono ${inputCls}`}
+                    placeholder="https://www.gofundme.com/f/…"
+                  />
+                  {gofundmeUrl && !validGofundme && (
+                    <p className="mt-2 text-xs text-down">Must look like https://www.gofundme.com/f/&lt;slug&gt;</p>
                   )}
                   <p className="mt-2 text-xs text-mut">
-                    The cause&apos;s wallet on Robinhood Chain — every creator fee is paid out here, on-chain.
+                    Creator fees accumulate on-chain and{" "}
+                    <span className="font-semibold text-ink">grokbot 🤖 deposits them to the GoFundMe every 6 hours</span>{" "}
+                    — hands-free, receipts in the terminal.
                   </p>
                 </div>
-                <div>
-                  <label className="microlabel">Cause link (optional)</label>
-                  <input value={causeUrl} onChange={(e) => setCauseUrl(e.target.value)} className={`mono ${inputCls}`} placeholder="https://… (charity site, GoFundMe, …)" />
-                  <p className="mt-2 text-xs text-mut">
-                    Shown on the token so people can see where the money goes.
-                  </p>
-                </div>
-              </div>
+              )}
             </div>
 
             <div>

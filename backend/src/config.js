@@ -46,4 +46,14 @@ export const config = {
   // fee keeper: sweeps curves + claims escrow + forwards to campaign vaults
   feeKeeperMs: Number(process.env.FEE_KEEPER_MS || 300_000),
   minClaimEth: Number(process.env.MIN_CLAIM_ETH || 0.002),
+
+  // ------------------------------------------------------------ cause modes
+  // donate.gg developer API key — when set, the live charity list is merged in
+  donateGgApiKey: process.env.DONATE_GG_API_KEY || "",
+  // platform giving wallet: receives org-mode payouts for charities whose own
+  // on-chain address isn't wired yet (CHARITY_ADDR_<ID>=0x…)
+  charityPayoutWallet: process.env.CHARITY_PAYOUT_WALLET || "",
+  // GoFundMe mode: vault payouts land here; grokbot executes the GoFundMe
+  // deposit run every 6 hours
+  gofundmePayoutWallet: process.env.GOFUNDME_PAYOUT_WALLET || "",
 };

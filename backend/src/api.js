@@ -9,6 +9,7 @@ import { encryptSecret } from "./crypto.js";
 import { newWallet, toEth } from "./evm.js";
 import { fetchLaunchFeeWei } from "./pons.js";
 import { createCampaignOnChain } from "./fund.js";
+import { listCharities, resolveCharity } from "./charities.js";
 
 export function createApi() {
   const app = express();
@@ -92,6 +93,14 @@ export function createApi() {
 
   // ------------------------------------------------- charity launchpad
 
+  app.get("/api/charities", async (_req, res) => {
+    try {
+      res.json(await listCharities());
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/launches", async (_req, res) => {
     try {
       const rows = await sql`select l.launch_id, l.campaign_id, l.name, l.symbol, l.logo, l.description,
@@ -128,6 +137,7 @@ export function createApi() {
       const {
         campaignId, name, symbol, logo, description, website, twitter, telegram, userWallet,
         causeName, causeBeneficiary, causeUrl, causeDescription,
+        charityId, gofundmeUrl,
       } = req.body || {};
       if (!name || String(name).trim().length === 0 || String(name).length > 64)
         return res.status(400).json({ error: "name required (max 64 chars)" });
@@ -135,31 +145,70 @@ export function createApi() {
       if (!/^[A-Z0-9]{1,10}$/.test(sym)) return res.status(400).json({ error: "symbol: 1-10 letters/digits" });
       if (!userWallet || !isAddress(userWallet)) return res.status(400).json({ error: "userWallet: valid address required (refund destination)" });
 
-      // The cause is created right here: either reuse an existing campaign id,
-      // or register a new one on-chain from the cause fields in the same flow.
+      // The cause is created right here. Three ways in:
+      //   charityId    → verified org, direct crypto transfer (donate.gg et al)
+      //   gofundmeUrl  → GoFundMe campaign; grokbot runs the deposits every 6h
+      //   campaignId   → reuse an existing cause
       let campaign;
       if (Number.isInteger(campaignId)) {
         [campaign] = await sql`select id, name, active from campaigns where id = ${campaignId}`;
         if (!campaign) return res.status(404).json({ error: "campaign not found" });
         if (!campaign.active) return res.status(400).json({ error: "campaign is paused" });
       } else {
-        if (!causeName || String(causeName).trim().length === 0 || String(causeName).length > 80)
-          return res.status(400).json({ error: "causeName required (max 80 chars)" });
-        if (!causeBeneficiary || !isAddress(causeBeneficiary))
-          return res.status(400).json({ error: "causeBeneficiary: valid address required" });
+        let cause;
+        if (charityId) {
+          const charity = await resolveCharity(String(charityId));
+          if (!charity) return res.status(404).json({ error: "charity not found" });
+          if (!charity.beneficiary)
+            return res.status(400).json({ error: "this charity's payout wallet isn't wired yet" });
+          cause = {
+            kind: "org",
+            name: charity.name,
+            beneficiary: charity.beneficiary,
+            url: charity.website,
+            description: `Direct crypto giving to ${charity.name} (${charity.category}).`,
+          };
+        } else if (gofundmeUrl) {
+          const gf = String(gofundmeUrl).trim();
+          if (!/^https:\/\/(www\.)?gofundme\.com\/f\/[A-Za-z0-9-]+\/?/.test(gf))
+            return res.status(400).json({ error: "gofundmeUrl: must look like https://www.gofundme.com/f/<slug>" });
+          if (!config.gofundmePayoutWallet || !isAddress(config.gofundmePayoutWallet))
+            return res.status(503).json({ error: "GoFundMe mode not configured (GOFUNDME_PAYOUT_WALLET)" });
+          const slug = gf.match(/\/f\/([A-Za-z0-9-]+)/)[1];
+          cause = {
+            kind: "gofundme",
+            name: `GoFundMe: ${slug.replace(/-/g, " ").slice(0, 60)}`,
+            beneficiary: config.gofundmePayoutWallet,
+            url: gf.split("?")[0],
+            description: "Deposits are made to this GoFundMe every 6 hours — executed automatically by grokbot.",
+          };
+        } else {
+          if (!causeName || String(causeName).trim().length === 0 || String(causeName).length > 80)
+            return res.status(400).json({ error: "causeName required (max 80 chars)" });
+          if (!causeBeneficiary || !isAddress(causeBeneficiary))
+            return res.status(400).json({ error: "causeBeneficiary: valid address required" });
+          cause = {
+            kind: "custom",
+            name: String(causeName).trim(),
+            beneficiary: causeBeneficiary,
+            url: String(causeUrl || "").slice(0, 300),
+            description: String(causeDescription || "").slice(0, 500),
+          };
+        }
+
         const created = await createCampaignOnChain({
-          name: String(causeName).trim(),
-          description: String(causeDescription || "").slice(0, 500),
-          causeUrl: String(causeUrl || "").slice(0, 300),
-          beneficiary: causeBeneficiary,
+          name: cause.name,
+          description: cause.description,
+          causeUrl: cause.url,
+          beneficiary: cause.beneficiary,
         });
         // Insert directly (the indexer's `on conflict do nothing` makes this safe)
-        await sql`insert into campaigns (id, creator, beneficiary, vault, name, metadata_uri, description, cause_url, tx_hash)
-          values (${created.id}, 'launchpad', ${causeBeneficiary.toLowerCase()}, ${created.vault},
-            ${String(causeName).trim()}, ${created.metadataURI}, ${String(causeDescription || "").slice(0, 500)},
-            ${String(causeUrl || "").slice(0, 300)}, ${created.txHash})
+        await sql`insert into campaigns (id, creator, beneficiary, vault, name, metadata_uri, description, cause_url, tx_hash, kind)
+          values (${created.id}, 'launchpad', ${cause.beneficiary.toLowerCase()}, ${created.vault},
+            ${cause.name}, ${created.metadataURI}, ${cause.description},
+            ${cause.url}, ${created.txHash}, ${cause.kind})
           on conflict (id) do nothing`;
-        campaign = { id: created.id, name: String(causeName).trim() };
+        campaign = { id: created.id, name: cause.name };
       }
 
       const launchFeeEth = await fetchLaunchFeeWei().then(toEth).catch(() => 0.0005);
