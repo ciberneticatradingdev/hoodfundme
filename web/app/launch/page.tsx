@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useAccount } from "wagmi";
+import { useAccount, useConnect } from "wagmi";
 import {
   fetchLaunch,
   createLaunch,
@@ -15,7 +15,6 @@ import {
 import { EXPLORER } from "@/lib/chain";
 import { shortAddr } from "@/lib/format";
 import { Reveal } from "@/components/motion";
-import { WalletButton } from "@/components/wallet-button";
 
 const inputCls =
   "mt-2 w-full rounded-2xl border border-line bg-card px-5 py-3.5 text-sm outline-none transition focus:border-up";
@@ -235,6 +234,7 @@ function CharityPicker({
 
 export default function LaunchPage() {
   const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
 
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
@@ -342,8 +342,7 @@ export default function LaunchPage() {
                   <span className="mono font-bold text-ink">{ticket.depositExpectedEth} ETH</span>{" "}
                   on <span className="font-semibold text-ink">Robinhood Chain</span> to the launch
                   wallet below. We detect it and launch automatically — the pons launch fee and gas
-                  come out of it, any leftover is donated to the cause, and a failed launch is
-                  refunded to your wallet ({shortAddr(address ?? "")}).
+                  come out of it, and any leftover is donated to the cause.
                 </p>
                 <button
                   onClick={copyAddr}
@@ -532,21 +531,19 @@ export default function LaunchPage() {
               )}
             </div>
 
-            {/* refunds — always the connected wallet */}
             {isConnected && address ? (
-              <p className="mono rounded-2xl bg-card2/60 px-4 py-3 text-xs text-mut">
-                Refunds go to your connected wallet: <span className="text-ink">{shortAddr(address)}</span>
-              </p>
+              <button onClick={submit} disabled={!canSubmit} className="btn-green w-full py-4 text-sm disabled:opacity-40">
+                {submitting ? "Creating launch wallet…" : "Get launch address"}
+              </button>
             ) : (
-              <div className="flex items-center justify-between rounded-2xl border border-line bg-card2/60 px-4 py-3">
-                <p className="text-xs text-mut">Connect your wallet — it&apos;s where refunds go if the launch fails.</p>
-                <WalletButton />
-              </div>
+              <button
+                onClick={() => connect({ connector: connectors[0] })}
+                disabled={connectors.length === 0}
+                className="btn-green w-full py-4 text-sm disabled:opacity-40"
+              >
+                Connect wallet
+              </button>
             )}
-
-            <button onClick={submit} disabled={!canSubmit} className="btn-green w-full py-4 text-sm disabled:opacity-40">
-              {submitting ? "Creating launch wallet…" : "Get launch address"}
-            </button>
             {error && <p className="text-xs text-down">{error}</p>}
             <p className="text-center text-xs text-mut">
               Cost: pons launch fee (0.0005 ETH) + gas. No platform fee — 0% forever.
