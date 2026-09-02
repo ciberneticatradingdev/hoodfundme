@@ -43,7 +43,16 @@ export function createApi() {
 
   app.get("/api/campaigns", async (_req, res) => {
     try {
-      const rows = await sql`select * from campaigns where active = true order by created_at desc`;
+      // Campaigns are minted at form time (the vault must exist before the
+      // deposit) — shells whose launch never funded stay hidden until they
+      // have a live token, funds, or donation history. They remain reusable.
+      const rows = await sql`select c.* from campaigns c
+        where c.active and (
+          c.total_raised > 0 or c.pending > 1e-12
+          or exists (select 1 from donations d where d.campaign_id = c.id)
+          or exists (select 1 from launches l where l.campaign_id = c.id and l.status = 'live')
+        )
+        order by c.created_at desc`;
       res.json(rows);
     } catch (err) {
       res.status(500).json({ error: err.message });
