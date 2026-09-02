@@ -63,12 +63,49 @@ async function fetchDonateGg() {
   }
 }
 
+// every.org — self-serve key, nonprofit browse by cause (1M+ 501c3 orgs)
+const EVERY_ORG_CAUSES = ["water", "children", "health", "animals", "environment", "poverty", "education", "humans"];
+let everyOrgCache = { list: null, ts: 0 };
+
+async function fetchEveryOrg() {
+  if (!config.everyOrgApiKey) return null;
+  if (everyOrgCache.list && Date.now() - everyOrgCache.ts < 3_600_000) return everyOrgCache.list;
+  try {
+    const results = await Promise.all(
+      EVERY_ORG_CAUSES.map((cause) =>
+        fetch(`https://partners.every.org/v0.2/browse/${cause}?apiKey=${config.everyOrgApiKey}&take=12`, {
+          signal: AbortSignal.timeout(8000),
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((j) => (j?.nonprofits || []).map((n) => ({ ...n, cause })))
+          .catch(() => [])
+      )
+    );
+    const list = results.flat().map((n) => ({
+      id: `evo-${n.slug || n.ein || n.name}`,
+      name: n.name,
+      category: `every.org · ${n.cause}`,
+      website: n.profileUrl || `https://www.every.org/${n.slug || ""}`,
+      logo: n.logoUrl || "",
+      source: "every.org",
+    }));
+    if (list.length > 0) everyOrgCache = { ts: Date.now(), list };
+    return everyOrgCache.list;
+  } catch {
+    return everyOrgCache.list;
+  }
+}
+
 /// Full list for the UI select. Every org is shown; `wired` tells the UI
 /// whether it pays the org's own wallet or routes via the giving wallet.
 export async function listCharities() {
-  const live = (await fetchDonateGg()) || [];
-  const seen = new Set();
-  const merged = [...CATALOG, ...live.filter((c) => !seen.has(c.name) && seen.add(c.name))];
+  const [dgg, evo] = await Promise.all([fetchDonateGg(), fetchEveryOrg()]);
+  const live = [...(dgg || []), ...(evo || [])];
+  const seen = new Set(CATALOG.map((c) => c.name.toLowerCase()));
+  const merged = [
+    ...CATALOG,
+    ...live.filter((c) => c.name && !seen.has(c.name.toLowerCase()) && seen.add(c.name.toLowerCase())),
+  ];
   return merged.map((c) => ({
     ...c,
     wired: Boolean(orgAddress(c.id) || config.charityPayoutWallet),

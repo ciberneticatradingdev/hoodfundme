@@ -50,6 +50,9 @@ export const config = {
   // ------------------------------------------------------------ cause modes
   // donate.gg developer API key — when set, the live charity list is merged in
   donateGgApiKey: process.env.DONATE_GG_API_KEY || "",
+  // every.org charity API key (self-serve at every.org/charity-api) — when set,
+  // nonprofit search over 1M+ orgs is merged into /api/charities
+  everyOrgApiKey: process.env.EVERY_ORG_API_KEY || "",
   // platform giving wallet: receives org-mode payouts for charities whose own
   // on-chain address isn't wired yet (CHARITY_ADDR_<ID>=0x…)
   charityPayoutWallet: process.env.CHARITY_PAYOUT_WALLET || "",
