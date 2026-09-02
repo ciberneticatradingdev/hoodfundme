@@ -221,7 +221,7 @@ export default function LaunchPage() {
               <p className="eyebrow">The cause — created with your launch</p>
 
               {/* mode picker */}
-              <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="mt-4 grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => setMode("org")}
@@ -229,9 +229,9 @@ export default function LaunchPage() {
                     mode === "org" ? "border-up bg-card" : "border-line bg-transparent opacity-60 hover:opacity-100"
                   }`}
                 >
-                  <div className="text-sm font-bold text-ink">Verified charity</div>
+                  <div className="text-sm font-bold text-ink">every.org</div>
                   <div className="mt-1 text-[11px] leading-snug text-mut">
-                    Direct crypto transfer to the org — donate.gg &amp; friends
+                    1M+ verified charities — pick any org
                   </div>
                 </button>
                 <button
@@ -241,16 +241,27 @@ export default function LaunchPage() {
                     mode === "gofundme" ? "border-up bg-card" : "border-line bg-transparent opacity-60 hover:opacity-100"
                   }`}
                 >
-                  <div className="text-sm font-bold text-ink">GoFundMe campaign</div>
+                  <div className="text-sm font-bold text-ink">GoFundMe</div>
                   <div className="mt-1 text-[11px] leading-snug text-mut">
-                    Deposits every 6h — executed automatically by grokbot
+                    Deposits every 6h — by grokbot 🤖
                   </div>
                 </button>
+                <div className="relative cursor-not-allowed rounded-xl border border-line bg-transparent p-3 text-left opacity-50">
+                  <div className="text-sm font-bold text-ink">donate.gg</div>
+                  <div className="mt-1 text-[11px] leading-snug text-mut">
+                    Verified giving rails
+                  </div>
+                  <span className="microlabel absolute -top-2 right-2 rounded-full bg-gold px-2 py-0.5 !text-forest">
+                    incoming
+                  </span>
+                </div>
               </div>
 
               {mode === "org" && (
                 <div className="mt-4">
-                  <label className="microlabel">Charity</label>
+                  <label className="microlabel">
+                    Charity {charities ? `(${charities.length} available)` : ""}
+                  </label>
                   <select value={charityId} onChange={(e) => setCharityId(e.target.value)} className={inputCls}>
                     <option value="">Select a charity…</option>
                     {(charities ?? []).map((c) => (
@@ -260,7 +271,7 @@ export default function LaunchPage() {
                     ))}
                   </select>
                   <p className="mt-2 text-xs text-mut">
-                    Every creator fee is transferred directly on-chain to the selected org.
+                    Verified 501(c)(3) orgs via every.org. Every creator fee is routed on-chain to the selected org.
                   </p>
                 </div>
               )}
