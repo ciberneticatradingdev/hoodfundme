@@ -5,8 +5,9 @@ export function Footer() {
     <footer className="hairline">
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-12 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="display flex items-center gap-2 text-lg text-ink">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-forest text-xs text-up">▲</span>
+          <div className="display flex items-center gap-2.5 text-lg text-ink">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
             HoodFundMe
           </div>
           <p className="mt-3 max-w-xs text-xs leading-relaxed text-mut">

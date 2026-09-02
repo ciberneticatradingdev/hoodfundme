@@ -14,10 +14,9 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-line/70 bg-bg/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-        <Link href="/" className="display flex items-center gap-2 text-lg text-ink">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-forest text-sm text-up">
-            ▲
-          </span>
+        <Link href="/" className="display flex items-center gap-2.5 text-lg text-ink">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="HoodFundMe" className="h-9 w-9 object-contain" />
           <span>
             Hood<span className="text-updeep">Fund</span>Me
           </span>

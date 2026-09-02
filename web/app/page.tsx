@@ -34,8 +34,10 @@ export default function Landing() {
           </div>
         </div>
 
-        <div className="mx-auto max-w-6xl px-4 pb-16 pt-24 text-center sm:pt-32">
-          <p className="eyebrow rise rise-1">▲ Robinhood Chain · trustless giving</p>
+        <div className="mx-auto max-w-6xl px-4 pb-16 pt-16 text-center sm:pt-24">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="HoodFundMe" className="floaty rise mx-auto mb-6 h-24 w-24 object-contain sm:h-28 sm:w-28" />
+          <p className="eyebrow rise rise-1">Robinhood Chain · trustless giving</p>
           <h1 className="display rise rise-2 mx-auto mt-5 max-w-4xl text-5xl text-ink sm:text-7xl">
             Fees in.
             <br />

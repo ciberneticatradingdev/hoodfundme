@@ -14,9 +14,22 @@ const display = Inter_Tight({
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://hoodfundme.vercel.app"),
   title: "HoodFundMe — Onchain Giving on Robinhood Chain",
   description:
-    "Point any fee stream at a campaign vault and 100% flows to the cause automatically. Trustless, on-chain, zero commission — on Robinhood Chain.",
+    "The charity launchpad on Robinhood Chain. Launch a coin, link it to a cause — creator fees flow 100% on-chain to charity, automatically.",
+  openGraph: {
+    title: "HoodFundMe — Onchain Giving on Robinhood Chain",
+    description:
+      "Launch a coin, link it to a cause. Creator fees flow 100% on-chain to charity, automatically.",
+    images: ["/og.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "HoodFundMe",
+    description: "The charity launchpad on Robinhood Chain — fees in, giving out.",
+    images: ["/og.png"],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
