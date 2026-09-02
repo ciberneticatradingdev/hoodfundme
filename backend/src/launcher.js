@@ -84,12 +84,19 @@ async function launch(row) {
   const account = accountFromSecret(decryptSecret(row.creator_secret_enc));
   console.log(`[launcher] launching "${row.name}" ($${row.symbol}) for campaign #${row.campaign_id} from ${row.creator_wallet}`);
 
+  // pons doesn't render the website field — bake the provenance into the
+  // description so people browsing pons know where the fees go.
+  const [campaign] = await sql`select name from campaigns where id = ${row.campaign_id}`;
+  const tokenUrl = `${config.siteUrl}/t/${row.launch_id}`;
+  const suffix = `Launched on hoodfund.me — 100% of creator fees fund "${campaign?.name ?? "charity"}". ${tokenUrl}`;
+  const description = row.description ? `${row.description}\n\n${suffix}` : suffix;
+
   const { token, curve, hash } = await launchCoin({
     account,
     name: row.name,
     symbol: row.symbol,
     logo: row.logo,
-    description: row.description,
+    description,
     // the coin's canonical website is its page on hoodfundme
     website: `${config.siteUrl}/t/${row.launch_id}`,
     twitter: row.twitter,
