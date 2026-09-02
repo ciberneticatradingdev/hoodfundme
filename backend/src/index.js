@@ -1,5 +1,5 @@
 import { config } from "./config.js";
-import { initSchema, dedupeCampaigns } from "./db.js";
+import { initSchema, repairCampaigns, dedupeCampaigns } from "./db.js";
 import { createApi } from "./api.js";
 import { startIndexer } from "./indexer.js";
 import { startKeeper } from "./keeper.js";
@@ -8,6 +8,7 @@ import { startFeeKeeper } from "./fee-keeper.js";
 
 async function main() {
   await initSchema();
+  await repairCampaigns().catch((e) => console.warn("[db] repair skipped:", e.message));
   await dedupeCampaigns().catch((e) => console.warn("[db] dedupe skipped:", e.message));
   const app = createApi();
   app.listen(config.port, () => {

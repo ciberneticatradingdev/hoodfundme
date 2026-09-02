@@ -94,6 +94,33 @@ export async function initSchema() {
   )`;
 }
 
+/// Boot-time repair for the indexer/API race and historical duplicates:
+/// 1. campaigns the indexer inserted first got kind='custom' — restore the
+///    real kind from the cause_url
+/// 2. launches pointing at a duplicate campaign are repointed to the
+///    canonical one (lowest active id per cause identity)
+export async function repairCampaigns() {
+  await sql`update campaigns set kind = 'gofundme'
+    where kind = 'custom' and cause_url like 'https://%gofundme.com/%'`;
+
+  const orgMoves = await sql`update launches l set campaign_id = k.min_id
+    from (select min(id) as min_id, lower(name) as ident from campaigns
+          where kind = 'org' and active group by lower(name)) k,
+         campaigns c
+    where c.id = l.campaign_id and c.active and c.kind = 'org'
+      and lower(c.name) = k.ident and l.campaign_id <> k.min_id
+    returning l.symbol, l.campaign_id`;
+  const gfMoves = await sql`update launches l set campaign_id = k.min_id
+    from (select min(id) as min_id, cause_url from campaigns
+          where kind = 'gofundme' and active group by cause_url) k,
+         campaigns c
+    where c.id = l.campaign_id and c.active and c.kind = 'gofundme'
+      and c.cause_url = k.cause_url and l.campaign_id <> k.min_id
+    returning l.symbol, l.campaign_id`;
+  for (const m of [...orgMoves, ...gfMoves])
+    console.log(`[db] repointed $${m.symbol} to canonical campaign #${m.campaign_id}`);
+}
+
 /// Hide duplicate campaigns (same org / same GoFundMe) that never got a live
 /// token and hold nothing — keeps the oldest one visible. Runs at boot.
 export async function dedupeCampaigns() {
@@ -102,11 +129,11 @@ export async function dedupeCampaigns() {
   // shells only, the oldest survives.
   const hidden = await sql`update campaigns c set active = false
     where c.active
-      and c.total_raised = 0 and c.pending < 1e-12
+      and c.pending < 1e-12
       and not exists (select 1 from launches l where l.campaign_id = c.id and l.status = 'live')
       and exists (
         select 1 from campaigns k
-        where k.id <> c.id and k.kind = c.kind
+        where k.id <> c.id and k.active and k.kind = c.kind
           and (
             (c.kind = 'org' and lower(k.name) = lower(c.name)) or
             (c.kind = 'gofundme' and k.cause_url = c.cause_url)
@@ -114,7 +141,8 @@ export async function dedupeCampaigns() {
           and (
             exists (select 1 from launches l2 where l2.campaign_id = k.id and l2.status = 'live')
             or (
-              not exists (select 1 from launches l3 where l3.campaign_id = k.id and l3.status = 'live')
+              c.total_raised = 0
+              and not exists (select 1 from launches l3 where l3.campaign_id = k.id and l3.status = 'live')
               and k.id < c.id
             )
           )

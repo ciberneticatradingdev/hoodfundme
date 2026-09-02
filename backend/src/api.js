@@ -325,11 +325,11 @@ export function createApi() {
         const [existing] =
           cause.kind === "org"
             ? await sql`select id, name from campaigns
-                where kind = 'org' and lower(name) = lower(${cause.name}) and active = true
+                where kind in ('org', 'custom') and lower(name) = lower(${cause.name}) and active = true
                 order by id asc limit 1`
             : cause.kind === "gofundme"
               ? await sql`select id, name from campaigns
-                  where kind = 'gofundme' and cause_url = ${cause.url} and active = true
+                  where kind in ('gofundme', 'custom') and cause_url = ${cause.url} and active = true
                   order by id asc limit 1`
               : [];
         if (existing) {
@@ -341,12 +341,17 @@ export function createApi() {
           causeUrl: cause.url,
           beneficiary: cause.beneficiary,
         });
-        // Insert directly (the indexer's `on conflict do nothing` makes this safe)
+        // Upsert: the indexer may have raced us and inserted this id first with
+        // kind='custom' — our write is authoritative for cause fields.
         await sql`insert into campaigns (id, creator, beneficiary, vault, name, metadata_uri, description, cause_url, tx_hash, kind)
           values (${created.id}, 'launchpad', ${cause.beneficiary.toLowerCase()}, ${created.vault},
             ${cause.name}, ${created.metadataURI}, ${cause.description},
             ${cause.url}, ${created.txHash}, ${cause.kind})
-          on conflict (id) do nothing`;
+          on conflict (id) do update set
+            kind = excluded.kind,
+            name = excluded.name,
+            description = excluded.description,
+            cause_url = excluded.cause_url`;
         campaign = { id: created.id, name: cause.name };
         }
       }
