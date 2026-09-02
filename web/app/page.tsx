@@ -42,14 +42,14 @@ export default function Landing() {
             <span className="green-text">Giving out.</span>
           </h1>
           <p className="rise rise-3 mx-auto mt-6 max-w-xl text-base leading-relaxed text-mut sm:text-lg">
-            Every campaign gets its own vault on Robinhood Chain. Point any fee
-            stream at it and the contract forwards{" "}
-            <span className="font-semibold text-ink">100% to the cause, automatically</span>.
+            The charity launchpad on Robinhood Chain. Launch a memecoin, link it
+            to a cause, and its{" "}
+            <span className="font-semibold text-ink">creator fees flow 100% to the campaign, automatically</span>.
             No cards. No middlemen. No trust required.
           </p>
           <div className="rise rise-4 mt-9 flex justify-center gap-3">
-            <Link href="/create" className="btn-green px-7 py-3.5 text-sm">
-              Create campaign
+            <Link href="/launch" className="btn-green px-7 py-3.5 text-sm">
+              Launch a coin
             </Link>
             <Link href="/campaigns" className="btn-ghost px-7 py-3.5 text-sm">
               Explore causes
@@ -115,18 +115,18 @@ export default function Landing() {
           {[
             {
               n: "01",
-              title: "Create a campaign",
-              body: "Name your cause, set the beneficiary address. One transaction deploys a dedicated vault for your campaign — on-chain, forever.",
+              title: "Launch a coin for a cause",
+              body: "Pick a campaign, name your coin, fund the launch wallet we generate. We hold the key — so the launch is perfect by construction: fees can only go to the cause.",
             },
             {
               n: "02",
-              title: "Point fees at the vault",
-              body: "Token creator fees, bot revenue, trading fees, tips — anything that earns ETH on Robinhood Chain. Set the vault as receiver and forget it.",
+              title: "Trading does the giving",
+              body: "Your coin trades on the pons bonding curve. Every creator fee it earns is swept by our keeper into the campaign's on-chain vault — hands-free.",
             },
             {
               n: "03",
               title: "Automatic payouts",
-              body: "The contract forwards everything to the beneficiary. Our keeper triggers it on a timer — and if we ever stop, anyone can. It's permissionless.",
+              body: "The HoodFund contract forwards the vault to the beneficiary. Anyone can trigger it, our keeper does. Every hop is a public transaction.",
             },
           ].map((c, i) => (
             <Reveal key={c.n} delay={(i + 1) as 1 | 2 | 3}>

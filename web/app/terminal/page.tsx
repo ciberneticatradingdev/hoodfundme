@@ -8,7 +8,11 @@ import { Reveal } from "@/components/motion";
 
 const typeColor: Record<string, string> = {
   campaign_created: "text-gold",
+  launch_created: "text-gold",
+  token_launched: "text-gold",
   fee_received: "text-creamdark",
+  fees_claimed: "text-creamdark",
+  fees_forwarded: "text-up",
   donated: "text-up",
   beneficiary_updated: "text-creamdark/50",
   active_set: "text-creamdark/50",

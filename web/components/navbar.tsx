@@ -6,6 +6,7 @@ import { WalletButton } from "./wallet-button";
 
 const links = [
   { href: "/campaigns", label: "Campaigns" },
+  { href: "/tokens", label: "Tokens" },
   { href: "/terminal", label: "Terminal" },
 ];
 
@@ -37,10 +38,10 @@ export function Navbar() {
             </Link>
           ))}
           <Link
-            href="/create"
+            href="/launch"
             className="btn-pop hidden px-4 py-2 text-sm sm:block"
           >
-            Create campaign
+            Launch a coin
           </Link>
           <WalletButton />
         </nav>

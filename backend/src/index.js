@@ -3,6 +3,8 @@ import { initSchema } from "./db.js";
 import { createApi } from "./api.js";
 import { startIndexer } from "./indexer.js";
 import { startKeeper } from "./keeper.js";
+import { startLauncher } from "./launcher.js";
+import { startFeeKeeper } from "./fee-keeper.js";
 
 async function main() {
   await initSchema();
@@ -12,6 +14,8 @@ async function main() {
   });
   startIndexer();
   startKeeper();
+  startLauncher();
+  startFeeKeeper();
 }
 
 main().catch((err) => {

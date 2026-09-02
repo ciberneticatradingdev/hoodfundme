@@ -49,6 +49,31 @@ export interface FeedEvent {
   ts: string;
 }
 
+export interface Launch {
+  launch_id: string;
+  campaign_id: number;
+  campaign_name?: string;
+  name: string;
+  symbol: string;
+  logo: string;
+  description: string;
+  status: string;
+  error?: string | null;
+  mint: string | null;
+  curve: string | null;
+  launch_tx: string | null;
+  refund_tx?: string | null;
+  creator_wallet?: string;
+  deposit_expected_eth?: number;
+  pending_pot_eth: number;
+  fees_claimed_eth: number;
+  fees_donated_eth: number;
+  curve_progress: number;
+  graduated: boolean;
+  created_at: string;
+  launched_at: string | null;
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BACKEND}${path}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`${path}: ${res.status}`);
@@ -58,8 +83,30 @@ async function get<T>(path: string): Promise<T> {
 export const fetchStats = () => get<Stats>("/api/stats");
 export const fetchCampaigns = () => get<Campaign[]>("/api/campaigns");
 export const fetchCampaign = (id: number) =>
-  get<{ campaign: Campaign; donations: Donation[]; deposits: { amount: number; detected_at: string }[] }>(
+  get<{ campaign: Campaign; donations: Donation[]; deposits: { amount: number; detected_at: string }[]; launches: Launch[] }>(
     `/api/campaigns/${id}`
   );
+export const fetchLaunches = () => get<Launch[]>("/api/launches");
+export const fetchLaunch = (id: string) => get<Launch>(`/api/launches/${id}`);
+export async function createLaunch(input: {
+  campaignId: number;
+  name: string;
+  symbol: string;
+  logo?: string;
+  description?: string;
+  website?: string;
+  twitter?: string;
+  telegram?: string;
+  userWallet: string;
+}): Promise<{ launchId: string; depositAddress: string; depositExpectedEth: number; timeoutMin: number }> {
+  const res = await fetch(`${BACKEND}/api/launches`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || `launch failed (${res.status})`);
+  return json;
+}
 export const fetchDonations = () => get<Donation[]>("/api/donations");
 export const fetchEvents = (after = 0) => get<FeedEvent[]>(`/api/events?after=${after}`);

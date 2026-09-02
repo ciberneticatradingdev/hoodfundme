@@ -8,7 +8,9 @@ import { fetchCampaign } from "@/lib/api";
 import { fmtEth, fmtUsd, shortAddr, timeAgo } from "@/lib/format";
 import { EXPLORER, FUND_ADDRESS } from "@/lib/chain";
 import { fundAbi } from "@/lib/abi";
+import Link from "next/link";
 import { Reveal, CountUp } from "@/components/motion";
+import { TokenCard } from "@/components/token-card";
 
 export default function CampaignPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -32,7 +34,7 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
       </div>
     );
   }
-  const { campaign: c, donations, deposits } = data;
+  const { campaign: c, donations, deposits, launches } = data;
 
   const donate = () => {
     writeContract({
@@ -117,6 +119,29 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
             Any ETH sent to this address on Robinhood Chain is forwarded 100% to the
             beneficiary. Set it as your token&apos;s fee receiver, tip jar, or revenue split.
           </p>
+        </div>
+      </Reveal>
+
+      {/* Tokens supporting this cause */}
+      <Reveal delay={2}>
+        <div className="mt-8">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="display text-xl text-ink">Tokens backing this cause</h2>
+            <Link href={`/launch`} className="btn-ghost px-4 py-2 text-xs">
+              + Launch one
+            </Link>
+          </div>
+          {(launches ?? []).length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {launches.map((t) => (
+                <TokenCard key={t.launch_id} t={t} showCampaign={false} />
+              ))}
+            </div>
+          ) : (
+            <p className="card-pop p-6 text-sm text-mut">
+              No tokens yet — launch a coin and its creator fees fund this campaign hands-free.
+            </p>
+          )}
         </div>
       </Reveal>
 

@@ -42,6 +42,35 @@ export async function initSchema() {
     ts timestamptz not null,
     unique (tx_hash, log_index)
   )`;
+  await sql`create table if not exists launches (
+    launch_id text primary key,
+    campaign_id integer not null references campaigns(id),
+    name text not null,
+    symbol text not null,
+    logo text not null default '',
+    description text not null default '',
+    website text not null default '',
+    twitter text not null default '',
+    telegram text not null default '',
+    user_wallet text not null,
+    deposit_expected_eth double precision not null,
+    creator_wallet text not null unique,
+    creator_secret_enc text not null,
+    status text not null default 'awaiting_deposit',
+    error text,
+    mint text,
+    curve text,
+    launch_tx text,
+    refund_tx text,
+    pending_pot_eth double precision not null default 0,
+    fees_claimed_eth double precision not null default 0,
+    fees_donated_eth double precision not null default 0,
+    curve_progress double precision not null default 0,
+    graduated boolean not null default false,
+    created_at timestamptz not null default now(),
+    launched_at timestamptz,
+    last_claim_at timestamptz
+  )`;
   await sql`create table if not exists events (
     id serial primary key,
     type text not null,

@@ -1,7 +1,23 @@
 import "dotenv/config";
 
 export const config = {
-  rpcUrl: process.env.RPC_URL || "https://rpc.mainnet.chain.robinhood.com",
+  // Robinhood Chain (chain id 4663). The official RPC sits behind Cloudflare
+  // and intermittently 403s datacenter IPs — ranked fallback list.
+  rpcUrls: (process.env.RPC_URLS ||
+    [
+      process.env.RPC_URL,
+      "https://robinhood-rpc.publicnode.com",
+      "https://robinhood.rpc.blxrbdn.com",
+      "https://rpc.mainnet.chain.robinhood.com",
+    ]
+      .filter(Boolean)
+      .join(","))
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
+  get rpcUrl() {
+    return this.rpcUrls[0];
+  },
   chainId: Number(process.env.CHAIN_ID || 4663),
   fundAddress: (process.env.FUND_ADDRESS || "").toLowerCase(),
   startBlock: process.env.START_BLOCK ? BigInt(process.env.START_BLOCK) : null,
@@ -9,9 +25,25 @@ export const config = {
   port: Number(process.env.PORT || 4100),
   pollMs: Number(process.env.POLL_MS || 5000),
   logChunk: BigInt(process.env.LOG_CHUNK || 5000),
+
   // keeper: flushes vaults that hold >= threshold. Optional — anyone can flush.
   keeperPk: process.env.KEEPER_PK || "",
   keeperIntervalMs: Number(process.env.KEEPER_INTERVAL_MS || 60000),
   flushThresholdEth: Number(process.env.FLUSH_THRESHOLD_ETH || 0.005),
   ethPriceRefreshMs: Number(process.env.ETH_PRICE_REFRESH_MS || 300000),
+
+  // ------------------------------------------------- charity launchpad (pons)
+  ponsFactory: process.env.PONS_FACTORY || "0x7eD598BcEf8bd9Edd8C97A195C6d13f40801EC7e",
+  ponsFeeEscrow: process.env.PONS_FEE_ESCROW || "0xd3AFEB2a57f70eF218Aa82451c51B2fb0416Ac9e",
+  ponsLaunchConfigId: Number(process.env.PONS_LAUNCH_CONFIG_ID || 0),
+  // 32-byte hex key for AES-256-GCM encryption of custodial launch wallets.
+  masterKey: process.env.MASTER_KEY || "",
+  // network costs kept inside the fresh wallet: pons launch fee (0.0005 ETH),
+  // tx gas, and a permanent gas reserve for future sweep/claim/forward txs
+  launchGasEth: Number(process.env.LAUNCH_GAS_ETH || 0.003),
+  gasReserveEth: Number(process.env.GAS_RESERVE_ETH || 0.0015),
+  depositTimeoutMin: Number(process.env.DEPOSIT_TIMEOUT_MIN || 30),
+  // fee keeper: sweeps curves + claims escrow + forwards to campaign vaults
+  feeKeeperMs: Number(process.env.FEE_KEEPER_MS || 300_000),
+  minClaimEth: Number(process.env.MIN_CLAIM_ETH || 0.002),
 };

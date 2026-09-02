@@ -1,8 +1,13 @@
+import crypto from "node:crypto";
 import express from "express";
 import cors from "cors";
-import { sql } from "./db.js";
+import { isAddress } from "viem";
+import { sql, logEvent } from "./db.js";
 import { config } from "./config.js";
 import { getEthPrice } from "./ethprice.js";
+import { encryptSecret } from "./crypto.js";
+import { newWallet, toEth } from "./evm.js";
+import { fetchLaunchFeeWei } from "./pons.js";
 
 export function createApi() {
   const app = express();
@@ -51,7 +56,10 @@ export function createApi() {
       if (!campaign) return res.status(404).json({ error: "not found" });
       const donations = await sql`select * from donations where campaign_id = ${id} order by ts desc limit 100`;
       const deposits = await sql`select * from deposits where campaign_id = ${id} order by detected_at desc limit 100`;
-      res.json({ campaign, donations, deposits });
+      const launches = await sql`select launch_id, name, symbol, logo, status, mint, curve, launch_tx,
+          pending_pot_eth, fees_claimed_eth, fees_donated_eth, curve_progress, graduated, launched_at
+        from launches where campaign_id = ${id} and status = 'live' order by launched_at desc`;
+      res.json({ campaign, donations, deposits, launches });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -78,6 +86,83 @@ export function createApi() {
       res.json(rows);
     } catch (err) {
       res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ------------------------------------------------- charity launchpad
+
+  app.get("/api/launches", async (_req, res) => {
+    try {
+      const rows = await sql`select l.launch_id, l.campaign_id, l.name, l.symbol, l.logo, l.description,
+          l.status, l.mint, l.curve, l.launch_tx, l.pending_pot_eth, l.fees_claimed_eth,
+          l.fees_donated_eth, l.curve_progress, l.graduated, l.created_at, l.launched_at,
+          c.name as campaign_name
+        from launches l join campaigns c on c.id = l.campaign_id
+        where l.status in ('live', 'launching')
+        order by l.created_at desc limit 100`;
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/launches/:id", async (req, res) => {
+    try {
+      const [row] = await sql`select l.launch_id, l.campaign_id, l.name, l.symbol, l.logo, l.description,
+          l.status, l.error, l.mint, l.curve, l.launch_tx, l.refund_tx, l.creator_wallet,
+          l.deposit_expected_eth, l.pending_pot_eth, l.fees_claimed_eth, l.fees_donated_eth,
+          l.curve_progress, l.graduated, l.created_at, l.launched_at,
+          c.name as campaign_name
+        from launches l join campaigns c on c.id = l.campaign_id
+        where l.launch_id = ${req.params.id}`;
+      if (!row) return res.status(404).json({ error: "not found" });
+      res.json(row);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/launches", async (req, res) => {
+    try {
+      const { campaignId, name, symbol, logo, description, website, twitter, telegram, userWallet } = req.body || {};
+      if (!Number.isInteger(campaignId)) return res.status(400).json({ error: "campaignId required" });
+      if (!name || String(name).trim().length === 0 || String(name).length > 64)
+        return res.status(400).json({ error: "name required (max 64 chars)" });
+      const sym = String(symbol || "").trim().toUpperCase();
+      if (!/^[A-Z0-9]{1,10}$/.test(sym)) return res.status(400).json({ error: "symbol: 1-10 letters/digits" });
+      if (!userWallet || !isAddress(userWallet)) return res.status(400).json({ error: "userWallet: valid address required (refund destination)" });
+
+      const [campaign] = await sql`select id, name, active from campaigns where id = ${campaignId}`;
+      if (!campaign) return res.status(404).json({ error: "campaign not found" });
+      if (!campaign.active) return res.status(400).json({ error: "campaign is paused" });
+
+      const launchFeeEth = await fetchLaunchFeeWei().then(toEth).catch(() => 0.0005);
+      const depositExpected = Number((launchFeeEth + config.launchGasEth).toFixed(6));
+
+      const wallet = newWallet();
+      const launchId = crypto.randomBytes(10).toString("hex");
+      await sql`insert into launches
+        (launch_id, campaign_id, name, symbol, logo, description, website, twitter, telegram,
+         user_wallet, deposit_expected_eth, creator_wallet, creator_secret_enc)
+        values (${launchId}, ${campaignId}, ${String(name).trim()}, ${sym},
+          ${String(logo || "").slice(0, 500)}, ${String(description || "").slice(0, 1000)},
+          ${String(website || "").slice(0, 300)}, ${String(twitter || "").slice(0, 300)}, ${String(telegram || "").slice(0, 300)},
+          ${userWallet.toLowerCase()}, ${depositExpected}, ${wallet.address.toLowerCase()}, ${encryptSecret(wallet.secret)})`;
+
+      await logEvent("launch_created", campaignId, `$${sym} launch created — awaiting ${depositExpected} ETH deposit`, {
+        symbol: sym,
+        launchId,
+      });
+
+      res.json({
+        launchId,
+        depositAddress: wallet.address,
+        depositExpectedEth: depositExpected,
+        timeoutMin: config.depositTimeoutMin,
+      });
+    } catch (err) {
+      console.error("[api/launches] error:", err);
+      res.status(500).json({ error: "failed to create launch" });
     }
   });
 
