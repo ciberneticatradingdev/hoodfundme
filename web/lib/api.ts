@@ -89,7 +89,7 @@ export const fetchCampaign = (id: number) =>
 export const fetchLaunches = () => get<Launch[]>("/api/launches");
 export const fetchLaunch = (id: string) => get<Launch>(`/api/launches/${id}`);
 export async function createLaunch(input: {
-  campaignId: number;
+  campaignId?: number;
   name: string;
   symbol: string;
   logo?: string;
@@ -97,6 +97,10 @@ export async function createLaunch(input: {
   website?: string;
   twitter?: string;
   telegram?: string;
+  causeName?: string;
+  causeBeneficiary?: string;
+  causeUrl?: string;
+  causeDescription?: string;
   userWallet: string;
 }): Promise<{ launchId: string; depositAddress: string; depositExpectedEth: number; timeoutMin: number }> {
   const res = await fetch(`${BACKEND}/api/launches`, {

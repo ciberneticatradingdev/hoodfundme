@@ -19,8 +19,8 @@ export function Footer() {
           <div>
             <div className="microlabel mb-3">App</div>
             <ul className="space-y-2 text-xs font-medium text-mut">
-              <li><a href="/campaigns" className="transition hover:text-ink">Campaigns</a></li>
-              <li><a href="/create" className="transition hover:text-ink">Create campaign</a></li>
+              <li><a href="/tokens" className="transition hover:text-ink">Tokens</a></li>
+              <li><a href="/launch" className="transition hover:text-ink">Launch a coin</a></li>
               <li><a href="/terminal" className="transition hover:text-ink">Live terminal</a></li>
             </ul>
           </div>

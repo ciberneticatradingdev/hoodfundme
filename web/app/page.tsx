@@ -51,8 +51,8 @@ export default function Landing() {
             <Link href="/launch" className="btn-green px-7 py-3.5 text-sm">
               Launch a coin
             </Link>
-            <Link href="/campaigns" className="btn-ghost px-7 py-3.5 text-sm">
-              Explore causes
+            <Link href="/tokens" className="btn-ghost px-7 py-3.5 text-sm">
+              Explore tokens
             </Link>
           </div>
         </div>
@@ -116,7 +116,7 @@ export default function Landing() {
             {
               n: "01",
               title: "Launch a coin for a cause",
-              body: "Pick a campaign, name your coin, fund the launch wallet we generate. We hold the key — so the launch is perfect by construction: fees can only go to the cause.",
+              body: "Name your coin, name your cause, set its wallet — all in one form. We generate and hold the launch key, so the launch is perfect by construction: fees can only go to the cause.",
             },
             {
               n: "02",

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
 import { isAddress } from "viem";
-import { fetchCampaigns, fetchLaunch, createLaunch } from "@/lib/api";
+import { fetchLaunch, createLaunch } from "@/lib/api";
 import { EXPLORER } from "@/lib/chain";
 import { fmtEth, shortAddr } from "@/lib/format";
 import { Reveal } from "@/components/motion";
@@ -15,13 +15,14 @@ const inputCls =
 
 export default function LaunchPage() {
   const { address } = useAccount();
-  const { data: campaigns } = useQuery({ queryKey: ["campaigns"], queryFn: fetchCampaigns });
 
-  const [campaignId, setCampaignId] = useState<number | "">("");
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
   const [logo, setLogo] = useState("");
   const [description, setDescription] = useState("");
+  const [causeName, setCauseName] = useState("");
+  const [causeBeneficiary, setCauseBeneficiary] = useState("");
+  const [causeUrl, setCauseUrl] = useState("");
   const [userWallet, setUserWallet] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -35,7 +36,8 @@ export default function LaunchPage() {
 
   const refundWallet = userWallet || address || "";
   const canSubmit =
-    campaignId !== "" && name.trim() && /^[A-Za-z0-9]{1,10}$/.test(symbol.trim()) &&
+    name.trim() && /^[A-Za-z0-9]{1,10}$/.test(symbol.trim()) &&
+    causeName.trim() && isAddress(causeBeneficiary) &&
     isAddress(refundWallet) && !submitting;
 
   const { data: status } = useQuery({
@@ -50,11 +52,13 @@ export default function LaunchPage() {
     setError("");
     try {
       const t = await createLaunch({
-        campaignId: campaignId as number,
         name: name.trim(),
         symbol: symbol.trim().toUpperCase(),
         logo: logo.trim(),
         description: description.trim(),
+        causeName: causeName.trim(),
+        causeBeneficiary: causeBeneficiary.trim(),
+        causeUrl: causeUrl.trim(),
         userWallet: refundWallet,
       });
       setTicket(t);
@@ -190,23 +194,6 @@ export default function LaunchPage() {
 
         <Reveal delay={1}>
           <div className="card-pop mt-10 space-y-6 p-8">
-            <div>
-              <label className="microlabel">Cause</label>
-              <select
-                value={campaignId}
-                onChange={(e) => setCampaignId(e.target.value === "" ? "" : Number(e.target.value))}
-                className={inputCls}
-              >
-                <option value="">Select a campaign…</option>
-                {(campaigns ?? []).filter((c) => c.active).map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-              <p className="mt-2 text-xs text-mut">
-                No campaign for your cause yet?{" "}
-                <Link href="/create" className="font-semibold text-updeep hover:underline">Create one first</Link> — it&apos;s one transaction.
-              </p>
-            </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2">
                 <label className="microlabel">Coin name</label>
@@ -225,6 +212,35 @@ export default function LaunchPage() {
               <label className="microlabel">Description (optional)</label>
               <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} maxLength={500} className={inputCls} placeholder="Why this coin, why this cause" />
             </div>
+
+            {/* ------------------------------------------------ the cause */}
+            <div className="rounded-2xl border border-up/30 bg-updim/40 p-5">
+              <p className="eyebrow">The cause — created with your launch</p>
+              <div className="mt-4 space-y-4">
+                <div>
+                  <label className="microlabel">Cause name</label>
+                  <input value={causeName} onChange={(e) => setCauseName(e.target.value)} maxLength={80} className={inputCls} placeholder="Clean water for Valparaíso" />
+                </div>
+                <div>
+                  <label className="microlabel">Beneficiary address</label>
+                  <input value={causeBeneficiary} onChange={(e) => setCauseBeneficiary(e.target.value)} className={`mono ${inputCls}`} placeholder="0x…" />
+                  {causeBeneficiary && !isAddress(causeBeneficiary) && (
+                    <p className="mt-2 text-xs text-down">Not a valid address.</p>
+                  )}
+                  <p className="mt-2 text-xs text-mut">
+                    The cause&apos;s wallet on Robinhood Chain — every creator fee is paid out here, on-chain.
+                  </p>
+                </div>
+                <div>
+                  <label className="microlabel">Cause link (optional)</label>
+                  <input value={causeUrl} onChange={(e) => setCauseUrl(e.target.value)} className={`mono ${inputCls}`} placeholder="https://… (charity site, GoFundMe, …)" />
+                  <p className="mt-2 text-xs text-mut">
+                    Shown on the token so people can see where the money goes.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className="microlabel">Your wallet (refunds)</label>
               <input
