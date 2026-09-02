@@ -1,5 +1,6 @@
-import { createWalletClient, http, publicActions, parseEther } from "viem";
+import { parseEther } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { client, walletClientFor } from "./evm.js";
 import { config } from "./config.js";
 import { sql, logEvent } from "./db.js";
 import { fundAbi } from "./abi.js";
@@ -17,10 +18,12 @@ export function startKeeper() {
   if (!config.fundAddress) return;
 
   const account = privateKeyToAccount(config.keeperPk);
-  const wallet = createWalletClient({
-    account,
-    transport: http(config.rpcUrl),
-  }).extend(publicActions);
+  const base = walletClientFor(account);
+  const wallet = {
+    getBalance: (args) => client.getBalance(args),
+    writeContract: (args) => base.writeContract(args),
+    waitForTransactionReceipt: (args) => client.waitForTransactionReceipt(args),
+  };
 
   console.log(`[keeper] active: ${account.address} | threshold ${config.flushThresholdEth} ETH | every ${config.keeperIntervalMs}ms`);
 

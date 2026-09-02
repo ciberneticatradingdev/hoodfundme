@@ -1,10 +1,11 @@
-import { createPublicClient, http, parseEventLogs, formatEther } from "viem";
+import { parseEventLogs, formatEther } from "viem";
 import { config } from "./config.js";
 import { sql, getMeta, setMeta, logEvent } from "./db.js";
 import { fundEventsAbi } from "./abi.js";
 import { getEthPrice } from "./ethprice.js";
+import { client } from "./evm.js";
 
-export const client = createPublicClient({ transport: http(config.rpcUrl) });
+export { client };
 
 const fromWei = (v) => Number(formatEther(v));
 
