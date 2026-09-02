@@ -81,13 +81,9 @@ function LogoDrop({
           drag ? "border-up bg-updim/50" : logoUrl ? "border-up/50 bg-card" : "border-line bg-card hover:border-up/60"
         }`}
       >
-        {logoUrl ? (
+        {logoUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={logoUrl} alt="logo" className="h-16 w-16 rounded-full border border-line object-cover" />
-        ) : (
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-card2 text-2xl">
-            {busy ? "⏳" : "🖼️"}
-          </div>
         )}
         <div className="min-w-0 text-sm">
           {busy ? (
