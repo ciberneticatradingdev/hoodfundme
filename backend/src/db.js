@@ -1,0 +1,68 @@
+import postgres from "postgres";
+import { config } from "./config.js";
+
+export const sql = postgres(config.databaseUrl, { onnotice: () => {} });
+
+export async function initSchema() {
+  await sql`create table if not exists meta (
+    key text primary key,
+    value text not null
+  )`;
+  await sql`create table if not exists campaigns (
+    id integer primary key,
+    creator text not null,
+    beneficiary text not null,
+    vault text not null unique,
+    name text not null,
+    metadata_uri text not null default '',
+    description text not null default '',
+    image text not null default '',
+    cause_url text not null default '',
+    total_raised double precision not null default 0,
+    pending double precision not null default 0,
+    active boolean not null default true,
+    created_at timestamptz not null default now(),
+    tx_hash text not null default ''
+  )`;
+  await sql`create table if not exists deposits (
+    id serial primary key,
+    campaign_id integer not null references campaigns(id),
+    amount double precision not null,
+    detected_at timestamptz not null default now()
+  )`;
+  await sql`create table if not exists donations (
+    id serial primary key,
+    campaign_id integer not null references campaigns(id),
+    amount double precision not null,
+    amount_usd double precision,
+    beneficiary text not null,
+    tx_hash text not null,
+    log_index integer not null,
+    block bigint not null,
+    ts timestamptz not null,
+    unique (tx_hash, log_index)
+  )`;
+  await sql`create table if not exists events (
+    id serial primary key,
+    type text not null,
+    campaign_id integer,
+    message text not null,
+    data jsonb,
+    ts timestamptz not null default now()
+  )`;
+}
+
+export async function getMeta(key) {
+  const rows = await sql`select value from meta where key = ${key}`;
+  return rows[0]?.value ?? null;
+}
+
+export async function setMeta(key, value) {
+  await sql`insert into meta (key, value) values (${key}, ${String(value)})
+    on conflict (key) do update set value = ${String(value)}`;
+}
+
+export async function logEvent(type, campaignId, message, data = null) {
+  await sql`insert into events (type, campaign_id, message, data)
+    values (${type}, ${campaignId}, ${message}, ${data})`;
+}

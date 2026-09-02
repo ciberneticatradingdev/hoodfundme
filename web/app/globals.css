@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0f0c;
+  --card: #10160f;
+  --card-2: #151d13;
+  --line: #202c1e;
+  --ink: #e9f2e6;
+  --mut: #7e8f7c;
+  --up: #00c805;
+  --up-dim: #0a3d13;
+  --down: #ff5949;
+  --gold: #ffd75e;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-card2: var(--card-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-mut: var(--mut);
+  --color-up: var(--up);
+  --color-updim: var(--up-dim);
+  --color-down: var(--down);
+  --color-gold: var(--gold);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+::selection {
+  background: var(--up);
+  color: var(--bg);
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.live-dot {
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
