@@ -6,6 +6,7 @@ import { fetchStats, fetchDonations, fetchEvents } from "@/lib/api";
 import { fmtEth, fmtUsd, shortAddr, timeAgo } from "@/lib/format";
 import { EXPLORER } from "@/lib/chain";
 import { Reveal, CountUp } from "@/components/motion";
+import { CaPill } from "@/components/ca-pill";
 
 export default function Landing() {
   const { data: stats } = useQuery({ queryKey: ["stats"], queryFn: fetchStats, refetchInterval: 10000 });
@@ -56,6 +57,9 @@ export default function Landing() {
             <Link href="/tokens" className="btn-ghost px-7 py-3.5 text-sm">
               Explore tokens
             </Link>
+          </div>
+          <div className="rise rise-4 mt-6 flex justify-center px-2">
+            <CaPill />
           </div>
         </div>
 

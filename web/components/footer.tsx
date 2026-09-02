@@ -1,4 +1,5 @@
 import { EXPLORER, FUND_ADDRESS } from "@/lib/chain";
+import { CaPill } from "./ca-pill";
 
 export function Footer() {
   return (
@@ -15,6 +16,9 @@ export function Footer() {
             payout is a public transaction, and the 0% commission is enforced by
             code — not a promise.
           </p>
+          <div className="mt-4">
+            <CaPill compact />
+          </div>
         </div>
         <div className="flex gap-14">
           <div>
