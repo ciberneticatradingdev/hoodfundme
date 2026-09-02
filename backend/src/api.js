@@ -218,8 +218,11 @@ export function createApi() {
       const {
         campaignId, name, symbol, logo, description, website, twitter, telegram, userWallet,
         causeName, causeBeneficiary, causeUrl, causeDescription,
-        charityId, gofundmeUrl,
+        charityId, gofundmeUrl, devBuyEth,
       } = req.body || {};
+      const devBuy = Number(devBuyEth) || 0;
+      if (devBuy < 0 || devBuy > 10 || !isFinite(devBuy))
+        return res.status(400).json({ error: "devBuyEth: 0 to 10 ETH" });
       if (!name || String(name).trim().length === 0 || String(name).length > 64)
         return res.status(400).json({ error: "name required (max 64 chars)" });
       const sym = String(symbol || "").trim().toUpperCase();
@@ -306,17 +309,17 @@ export function createApi() {
       }
 
       const launchFeeEth = await fetchLaunchFeeWei().then(toEth).catch(() => 0.0005);
-      const depositExpected = Number((launchFeeEth + config.launchGasEth).toFixed(6));
+      const depositExpected = Number((launchFeeEth + config.launchGasEth + devBuy).toFixed(6));
 
       const wallet = newWallet();
       const launchId = crypto.randomBytes(10).toString("hex");
       await sql`insert into launches
         (launch_id, campaign_id, name, symbol, logo, description, website, twitter, telegram,
-         user_wallet, deposit_expected_eth, creator_wallet, creator_secret_enc)
+         user_wallet, dev_buy_eth, deposit_expected_eth, creator_wallet, creator_secret_enc)
         values (${launchId}, ${campaign.id}, ${String(name).trim()}, ${sym},
           ${String(logo || "").slice(0, 500)}, ${String(description || "").slice(0, 1000)},
           ${String(website || "").slice(0, 300)}, ${xUrl.slice(0, 300)}, ${String(telegram || "").slice(0, 300)},
-          ${userWallet.toLowerCase()}, ${depositExpected}, ${wallet.address.toLowerCase()}, ${encryptSecret(wallet.secret)})`;
+          ${userWallet.toLowerCase()}, ${devBuy}, ${depositExpected}, ${wallet.address.toLowerCase()}, ${encryptSecret(wallet.secret)})`;
 
       await logEvent("launch_created", campaign.id, `$${sym} launch created — awaiting ${depositExpected} ETH deposit`, {
         symbol: sym,

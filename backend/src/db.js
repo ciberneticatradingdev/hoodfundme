@@ -43,6 +43,11 @@ export async function initSchema() {
     unique (tx_hash, log_index)
   )`;
   await sql`alter table campaigns add column if not exists kind text not null default 'custom'`;
+  await sql`do $$ begin
+    if exists (select from information_schema.tables where table_name = 'launches') then
+      alter table launches add column if not exists dev_buy_eth double precision not null default 0;
+    end if;
+  end $$`;
   await sql`create table if not exists launches (
     launch_id text primary key,
     campaign_id integer not null references campaigns(id),
@@ -54,6 +59,7 @@ export async function initSchema() {
     twitter text not null default '',
     telegram text not null default '',
     user_wallet text not null,
+    dev_buy_eth double precision not null default 0,
     deposit_expected_eth double precision not null,
     creator_wallet text not null unique,
     creator_secret_enc text not null,

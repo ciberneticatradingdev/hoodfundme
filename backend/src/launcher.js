@@ -1,7 +1,7 @@
 import { sql, logEvent } from "./db.js";
 import { config } from "./config.js";
 import { decryptSecret } from "./crypto.js";
-import { accountFromSecret, client, getEthBalance, getEthBalanceWei, sendEth, toEth } from "./evm.js";
+import { accountFromSecret, client, getEthBalance, getEthBalanceWei, sendEth, toEth, toWei } from "./evm.js";
 import { launchCoin } from "./pons.js";
 
 /// Watches awaiting_deposit launches; once the user's ETH lands in the fresh
@@ -75,6 +75,10 @@ async function launch(row) {
     website: `${config.siteUrl}/t/${row.launch_id}`,
     twitter: row.twitter,
     telegram: row.telegram,
+    // dev buy rides in the same tx via the launch-and-buy router; the tokens
+    // land straight in the user's own wallet
+    devBuyWei: toWei(row.dev_buy_eth || 0),
+    devBuyRecipient: row.user_wallet,
   });
 
   await sql`update launches set

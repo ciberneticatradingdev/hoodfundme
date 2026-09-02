@@ -35,6 +35,7 @@ export const config = {
   // ------------------------------------------------- charity launchpad (pons)
   ponsFactory: process.env.PONS_FACTORY || "0x7eD598BcEf8bd9Edd8C97A195C6d13f40801EC7e",
   ponsFeeEscrow: process.env.PONS_FEE_ESCROW || "0xd3AFEB2a57f70eF218Aa82451c51B2fb0416Ac9e",
+  ponsLaunchAndBuy: process.env.PONS_LAUNCH_AND_BUY || "0xe33E9E479dF8802cb0866d5d05258bEc4cF62948",
   ponsLaunchConfigId: Number(process.env.PONS_LAUNCH_CONFIG_ID || 0),
   // 32-byte hex key for AES-256-GCM encryption of custodial launch wallets.
   masterKey: process.env.MASTER_KEY || "",

@@ -142,6 +142,7 @@ export async function createLaunch(input: {
   causeDescription?: string;
   charityId?: string;
   gofundmeUrl?: string;
+  devBuyEth?: number;
   userWallet: string;
 }): Promise<{ launchId: string; depositAddress: string; depositExpectedEth: number; timeoutMin: number }> {
   const res = await fetch(`${BACKEND}/api/launches`, {

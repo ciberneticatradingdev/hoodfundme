@@ -18,6 +18,12 @@ export const FACTORY_ABI = parseAbi([
   "event TokenLaunched(address indexed token, address indexed curve, address indexed deployer, address pairToken, uint256 launchConfigId, uint256 graduationThreshold)",
 ]);
 
+export const LAUNCH_AND_BUY_ABI = parseAbi([
+  "struct Socials { string twitter; string telegram; string discord; string website; string farcaster; }",
+  "struct TokenParams { string name; string symbol; string logo; string description; Socials socials; address creatorFeeRecipient; uint16 creatorTaxBps; bool buybackEnabled; bytes32 expectedEconomics; bytes32 salt; }",
+  "function launchAndBuy(TokenParams params, uint256 launchConfigId, address pairToken, uint256 quoteIn, uint256 minTokensOut, address recipient, address[] snipeTaxExemptions) payable returns (address token, address curve, uint256 tokensOut)",
+]);
+
 export const CURVE_ABI = parseAbi([
   "function getReserves() view returns (uint256 quoteReserve, uint256 tokenReserve)",
   "function buy(uint256 quoteIn, uint256 minTokensOut, address recipient) payable returns (uint256 tokensOut)",
@@ -38,10 +44,12 @@ function randomSalt() {
   return `0x${crypto.randomBytes(32).toString("hex")}`;
 }
 
-/// One transaction on the pons factory. The custodial coin wallet is the
-/// launcher AND the creatorFeeRecipient — every creator fee accrues to it,
-/// reserved for the linked charity campaign.
-export async function launchCoin({ account, name, symbol, logo, description, website, twitter, telegram }) {
+/// One transaction on the pons factory (or the launch-and-buy router when a
+/// dev buy rides along — dev-buy tokens land straight in the user's wallet,
+/// nothing to front-run). The custodial coin wallet is the launcher AND the
+/// creatorFeeRecipient — every creator fee accrues to it, reserved for the
+/// linked charity campaign.
+export async function launchCoin({ account, name, symbol, logo, description, website, twitter, telegram, devBuyWei = 0n, devBuyRecipient }) {
   const factory = config.ponsFactory;
   const configId = BigInt(config.ponsLaunchConfigId);
   const pairToken = zeroAddress; // native ETH quote
@@ -67,13 +75,24 @@ export async function launchCoin({ account, name, symbol, logo, description, web
   };
 
   const wallet = walletClientFor(account);
-  const hash = await wallet.writeContract({
-    address: factory,
-    abi: FACTORY_ABI,
-    functionName: "launchToken",
-    args: [params, configId, pairToken],
-    value: launchFee,
-  });
+  let hash;
+  if (devBuyWei > 0n) {
+    hash = await wallet.writeContract({
+      address: config.ponsLaunchAndBuy,
+      abi: LAUNCH_AND_BUY_ABI,
+      functionName: "launchAndBuy",
+      args: [params, configId, pairToken, devBuyWei, 0n, devBuyRecipient || account.address, []],
+      value: launchFee + devBuyWei,
+    });
+  } else {
+    hash = await wallet.writeContract({
+      address: factory,
+      abi: FACTORY_ABI,
+      functionName: "launchToken",
+      args: [params, configId, pairToken],
+      value: launchFee,
+    });
+  }
 
   const receipt = await client.waitForTransactionReceipt({ hash });
   if (receipt.status !== "success") throw new Error(`launch tx reverted (${hash})`);

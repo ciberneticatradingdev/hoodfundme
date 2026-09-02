@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useAccount } from "wagmi";
+import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
+import { parseEther } from "viem";
 import { openWalletModal } from "@/components/wallet-modal";
 import {
   fetchLaunch,
@@ -241,6 +242,7 @@ export default function LaunchPage() {
   const [logoUrl, setLogoUrl] = useState("");
   const [description, setDescription] = useState("");
   const [twitter, setTwitter] = useState("");
+  const [devBuy, setDevBuy] = useState("");
   const [mode, setMode] = useState<"org" | "gofundme">("org");
   const [charity, setCharity] = useState<Charity | null>(null);
   const [gofundmeUrl, setGofundmeUrl] = useState("");
@@ -289,6 +291,14 @@ export default function LaunchPage() {
     refetchInterval: 4000,
   });
 
+  const {
+    sendTransaction,
+    data: depositTxHash,
+    isPending: depositSending,
+    error: depositError,
+  } = useSendTransaction();
+  const { isSuccess: depositConfirmed } = useWaitForTransactionReceipt({ hash: depositTxHash });
+
   const submit = async () => {
     if (!address) return;
     setSubmitting(true);
@@ -300,6 +310,7 @@ export default function LaunchPage() {
         logo: logoUrl,
         description: description.trim(),
         twitter: twitter.trim(),
+        devBuyEth: Number(devBuy) || 0,
         ...(mode === "org" ? { charityId: charity!.id } : { gofundmeUrl: gofundmeUrl.trim() }),
         userWallet: address,
       });
@@ -339,19 +350,57 @@ export default function LaunchPage() {
           {st === "awaiting_deposit" && (
             <Reveal delay={1}>
               <div className="card-pop mt-8 p-8">
-                <p className="text-sm leading-relaxed text-mut">
-                  Send exactly{" "}
-                  <span className="mono font-bold text-ink">{ticket.depositExpectedEth} ETH</span>{" "}
-                  on <span className="font-semibold text-ink">Robinhood Chain</span> to the launch
-                  wallet below. We detect it and launch automatically — the pons launch fee and gas
-                  come out of it, and any leftover is donated to the cause.
-                </p>
-                <button
-                  onClick={copyAddr}
-                  className="mono mt-5 block w-full break-all rounded-2xl border border-up/40 bg-updim px-5 py-4 text-left text-sm text-ink transition hover:border-up"
-                >
-                  {ticket.depositAddress} {copied ? "✓" : "⧉"}
-                </button>
+                {!depositTxHash ? (
+                  <>
+                    <p className="text-sm leading-relaxed text-mut">
+                      One transaction from your wallet funds the launch
+                      {Number(devBuy) > 0 && (
+                        <> — including your <span className="mono font-semibold text-ink">{devBuy} ETH</span> dev buy</>
+                      )}
+                      . We detect it and launch automatically; any leftover is donated to the cause.
+                    </p>
+                    <button
+                      onClick={() =>
+                        sendTransaction({
+                          to: ticket.depositAddress as `0x${string}`,
+                          value: parseEther(String(ticket.depositExpectedEth)),
+                        })
+                      }
+                      disabled={depositSending}
+                      className="btn-green mt-5 w-full py-4 text-sm disabled:opacity-50"
+                    >
+                      {depositSending ? "Confirm in your wallet…" : `Launch — send ${ticket.depositExpectedEth} ETH`}
+                    </button>
+                    {depositError && (
+                      <p className="mt-3 text-xs text-down">{depositError.message.split("\n")[0]}</p>
+                    )}
+                    <details className="mt-4">
+                      <summary className="microlabel cursor-pointer">or send manually</summary>
+                      <button
+                        onClick={copyAddr}
+                        className="mono mt-2 block w-full break-all rounded-2xl border border-line bg-bg px-4 py-3 text-left text-xs text-mut transition hover:border-up"
+                      >
+                        {ticket.depositAddress} {copied ? "✓" : "⧉"}
+                      </button>
+                      <p className="mt-1.5 text-[11px] text-mut">
+                        Send exactly {ticket.depositExpectedEth} ETH on Robinhood Chain.
+                      </p>
+                    </details>
+                  </>
+                ) : (
+                  <p className="text-sm leading-relaxed text-mut">
+                    Deposit sent{depositConfirmed ? " and confirmed" : ""} —{" "}
+                    <a
+                      href={`${EXPLORER}/tx/${depositTxHash}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mono text-updeep hover:underline"
+                    >
+                      {shortAddr(depositTxHash)} ↗
+                    </a>
+                    . Launching your coin any second now…
+                  </p>
+                )}
                 <div className="mt-4 flex items-center gap-2">
                   <span className="live-dot h-2 w-2 rounded-full bg-up" />
                   <span className="microlabel">watching for your deposit · expires in {ticket.timeoutMin} min</span>
@@ -453,18 +502,31 @@ export default function LaunchPage() {
               <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} maxLength={500} className={inputCls} placeholder="Why this coin, why this cause" />
             </div>
 
-            <div>
-              <label className="microlabel">X (optional)</label>
-              <input
-                value={twitter}
-                onChange={(e) => setTwitter(e.target.value)}
-                className={`mono ${inputCls}`}
-                placeholder="@handle or https://x.com/…"
-              />
-              <p className="mt-2 text-xs text-mut">
-                The coin&apos;s website is set automatically to its page on HoodFundMe.
-              </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="microlabel">X (optional)</label>
+                <input
+                  value={twitter}
+                  onChange={(e) => setTwitter(e.target.value)}
+                  className={`mono ${inputCls}`}
+                  placeholder="@handle or https://x.com/…"
+                />
+              </div>
+              <div>
+                <label className="microlabel">Dev buy in ETH (optional)</label>
+                <input
+                  value={devBuy}
+                  onChange={(e) => setDevBuy(e.target.value.replace(/[^0-9.]/g, ""))}
+                  className={`mono ${inputCls}`}
+                  placeholder="0.0"
+                  inputMode="decimal"
+                />
+              </div>
             </div>
+            <p className="-mt-3 text-xs text-mut">
+              The coin&apos;s website is set automatically to its page on HoodFundMe. Dev-buy
+              tokens land straight in your wallet, in the launch transaction itself.
+            </p>
 
             {/* ------------------------------------------------ the cause */}
             <div className="rounded-2xl border border-up/30 bg-updim/40 p-5">
