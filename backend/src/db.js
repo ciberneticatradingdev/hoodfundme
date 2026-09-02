@@ -97,16 +97,26 @@ export async function initSchema() {
 /// Hide duplicate campaigns (same org / same GoFundMe) that never got a live
 /// token and hold nothing — keeps the oldest one visible. Runs at boot.
 export async function dedupeCampaigns() {
+  // An "empty shell" has no live token and holds nothing. Among duplicates
+  // of the same cause, shells lose to any campaign with a live token; among
+  // shells only, the oldest survives.
   const hidden = await sql`update campaigns c set active = false
     where c.active
       and c.total_raised = 0 and c.pending < 1e-12
       and not exists (select 1 from launches l where l.campaign_id = c.id and l.status = 'live')
       and exists (
         select 1 from campaigns k
-        where k.id < c.id and k.kind = c.kind
+        where k.id <> c.id and k.kind = c.kind
           and (
             (c.kind = 'org' and lower(k.name) = lower(c.name)) or
             (c.kind = 'gofundme' and k.cause_url = c.cause_url)
+          )
+          and (
+            exists (select 1 from launches l2 where l2.campaign_id = k.id and l2.status = 'live')
+            or (
+              not exists (select 1 from launches l3 where l3.campaign_id = k.id and l3.status = 'live')
+              and k.id < c.id
+            )
           )
       )
     returning c.id, c.name`;
