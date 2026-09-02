@@ -509,7 +509,7 @@ export default function LaunchPage() {
                   Creator fees now flow to {status.campaign_name} automatically.
                 </p>
                 <div className="mt-4 flex justify-center gap-2">
-                  <a href={`https://ponsfamily.com/token/${status.mint}`} target="_blank" rel="noreferrer" className="btn-green px-5 py-2.5 text-xs">
+                  <a href={`https://www.ponsfamily.com/launchpad/${status.mint}`} target="_blank" rel="noreferrer" className="btn-green px-5 py-2.5 text-xs">
                     Trade on pons ↗
                   </a>
                   <Link href={`/t/${ticket.launchId}`} className="btn-pop px-5 py-2.5 text-xs">

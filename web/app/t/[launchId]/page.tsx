@@ -111,7 +111,7 @@ export default function TokenPage({ params }: { params: Promise<{ launchId: stri
         <Reveal delay={3}>
           <div className="mt-8 flex flex-wrap gap-3">
             {t.mint && (
-              <a href={`https://ponsfamily.com/token/${t.mint}`} target="_blank" rel="noreferrer" className="btn-green px-7 py-3.5 text-sm">
+              <a href={`https://www.ponsfamily.com/launchpad/${t.mint}`} target="_blank" rel="noreferrer" className="btn-green px-7 py-3.5 text-sm">
                 Trade ${t.symbol} on pons ↗
               </a>
             )}

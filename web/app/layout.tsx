@@ -15,7 +15,7 @@ const display = Inter_Tight({
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://hoodfundme.vercel.app"),
+  metadataBase: new URL("https://www.hoodfund.me"),
   title: "HoodFundMe — Onchain Giving on Robinhood Chain",
   description:
     "The charity launchpad on Robinhood Chain. Launch a coin, link it to a cause — creator fees flow 100% on-chain to charity, automatically.",

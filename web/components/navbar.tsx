@@ -6,7 +6,9 @@ import { WalletButton } from "./wallet-button";
 
 const links = [
   { href: "/tokens", label: "Tokens" },
+  { href: "/campaigns", label: "Campaigns" },
   { href: "/terminal", label: "Terminal" },
+  { href: "/docs", label: "Docs" },
 ];
 
 export function Navbar() {
